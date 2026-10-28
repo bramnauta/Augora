@@ -1,0 +1,32 @@
+using AudioCentral.Core;
+using Microsoft.AspNetCore.Diagnostics;
+
+namespace AudioCentral.Server;
+
+/// <summary>
+/// Turns <see cref="AudioCentralException"/> into RFC 9457 Problem Details with a <c>code</c> extension.
+/// </summary>
+internal sealed class ProblemDetailsExceptionHandler(IProblemDetailsService problemDetails, ILogger<ProblemDetailsExceptionHandler> logger) : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
+    {
+        if (exception is not AudioCentralException error)
+        {
+            return false;
+        }
+
+        logger.LogInformation("Request {Path} failed: {Code} {Message}", httpContext.Request.Path, error.Code, error.Message);
+        httpContext.Response.StatusCode = error.StatusCode;
+        return await problemDetails.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = httpContext,
+            Exception = exception,
+            ProblemDetails =
+            {
+                Status = error.StatusCode,
+                Title = error.Message,
+                Extensions = { ["code"] = error.Code },
+            },
+        });
+    }
+}

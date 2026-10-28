@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>AudioCentral</value></data>
+  <data name="Nav_Players" xml:space="preserve"><value>Spelers</value></data>
+  <data name="Nav_Browse" xml:space="preserve"><value>Bladeren</value></data>
+  <data name="Nav_Search" xml:space="preserve"><value>Zoeken</value></data>
+  <data name="Nav_Queue" xml:space="preserve"><value>Wachtrij</value></data>
+  <data name="Nav_Settings" xml:space="preserve"><value>Instellingen</value></data>
+  <data name="SelectPlayer" xml:space="preserve"><value>Kies een speler</value></data>
+  <data name="NoPlayers" xml:space="preserve"><value>Nog geen spelers gevonden. Google Cast-apparaten verschijnen automatisch, of voeg ze toe bij Instellingen.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>Niet beschikbaar</value></data>
+  <data name="NothingPlaying" xml:space="preserve"><value>Niets aan het afspelen</value></data>
+  <data name="Play" xml:space="preserve"><value>Afspelen</value></data>
+  <data name="Pause" xml:space="preserve"><value>Pauzeren</value></data>
+  <data name="Resume" xml:space="preserve"><value>Hervatten</value></data>
+  <data name="Stop" xml:space="preserve"><value>Stoppen</value></data>
+  <data name="Next" xml:space="preserve"><value>Volgende</value></data>
+  <data name="Previous" xml:space="preserve"><value>Vorige</value></data>
+  <data name="Mute" xml:space="preserve"><value>Dempen</value></data>
+  <data name="Unmute" xml:space="preserve"><value>Dempen opheffen</value></data>
+  <data name="Volume" xml:space="preserve"><value>Volume</value></data>
+  <data name="PlayNext" xml:space="preserve"><value>Hierna afspelen</value></data>
+  <data name="AddToQueue" xml:space="preserve"><value>Toevoegen aan wachtrij</value></data>
+  <data name="Library" xml:space="preserve"><value>Bibliotheek</value></data>
+  <data name="SearchPlaceholder" xml:space="preserve"><value>Zoek zenders, podcasts, ...</value></data>
+  <data name="NoResults" xml:space="preserve"><value>Geen resultaten</value></data>
+  <data name="EmptyFolder" xml:space="preserve"><value>Deze map is leeg</value></data>
+  <data name="Live" xml:space="preserve"><value>Live</value></data>
+  <data name="ControlledBy" xml:space="preserve"><value>Bediend door {0}</value></data>
+  <data name="NoPlayerSelected" xml:space="preserve"><value>Kies eerst een speler om op af te spelen.</value></data>
+  <data name="PlayingOn" xml:space="preserve"><value>Speelt af op {0}</value></data>
+  <data name="Added" xml:space="preserve"><value>Toegevoegd aan de wachtrij van {0}</value></data>
+  <data name="Error" xml:space="preserve"><value>Er ging iets mis</value></data>
+  <data name="QueueEmpty" xml:space="preserve"><value>De wachtrij is leeg</value></data>
+  <data name="ClearQueue" xml:space="preserve"><value>Wachtrij leegmaken</value></data>
+  <data name="Remove" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="Reconnecting" xml:space="preserve"><value>Verbinding met de server verbroken, opnieuw verbinden...</value></data>
+  <data name="Kind_Speaker" xml:space="preserve"><value>Speaker</value></data>
+  <data name="Kind_Tv" xml:space="preserve"><value>Tv</value></data>
+  <data name="Kind_DeviceGroup" xml:space="preserve"><value>Groep</value></data>
+  <data name="Kind_SyncGroup" xml:space="preserve"><value>Sync-groep</value></data>
+  <data name="Kind_Browser" xml:space="preserve"><value>Browser</value></data>
+  <data name="Kind_Phone" xml:space="preserve"><value>Telefoon</value></data>
+  <data name="Language" xml:space="preserve"><value>Taal</value></data>
+  <data name="ManualDevices" xml:space="preserve"><value>Handmatig toegevoegde Cast-apparaten</value></data>
+  <data name="ManualDevicesHelp" xml:space="preserve"><value>Gebruik dit als Google Home-apparaten niet automatisch gevonden worden, bijvoorbeeld omdat ze in een ander VLAN zitten dan AudioCentral. Een speaker gebruikt poort 8009; een groep heeft een eigen poort (zie de Google Home-app of je router).</value></data>
+  <data name="Name" xml:space="preserve"><value>Naam</value></data>
+  <data name="Host" xml:space="preserve"><value>IP-adres of hostnaam</value></data>
+  <data name="Port" xml:space="preserve"><value>Poort</value></data>
+  <data name="Add" xml:space="preserve"><value>Toevoegen</value></data>
+  <data name="NoManualDevices" xml:space="preserve"><value>Geen handmatige apparaten</value></data>
+  <data name="Back" xml:space="preserve"><value>Terug</value></data>
+</root>

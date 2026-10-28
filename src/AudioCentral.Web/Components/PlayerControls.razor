@@ -1,0 +1,45 @@
+@inject ApiClient Api
+@inject NotificationService Notifications
+@inject IStringLocalizer<Strings> L
+
+@* Transport and volume controls for one player. *@
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
+    <RadzenButton Icon="skip_previous" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" Disabled="@(!Player.Available)"
+                  Click="@(() => Run(() => Api.PreviousAsync(Player.Id)))" title="@L["Previous"]" />
+    @if (Player.State is PlaybackState.Playing or PlaybackState.Buffering)
+    {
+        <RadzenButton Icon="pause" ButtonStyle="ButtonStyle.Primary" Shade="Shade.Default" Disabled="@(!Player.Available)"
+                      Click="@(() => Run(() => Player.NowPlaying?.IsLive == true ? Api.StopAsync(Player.Id) : Api.PauseAsync(Player.Id)))" title="@L["Pause"]" />
+    }
+    else
+    {
+        <RadzenButton Icon="play_arrow" ButtonStyle="ButtonStyle.Primary" Disabled="@(!Player.Available || Player.State != PlaybackState.Paused)"
+                      Click="@(() => Run(() => Api.ResumeAsync(Player.Id)))" title="@L["Resume"]" />
+    }
+    <RadzenButton Icon="stop" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" Disabled="@(!Player.Available || Player.State == PlaybackState.Idle)"
+                  Click="@(() => Run(() => Api.StopAsync(Player.Id)))" title="@L["Stop"]" />
+    <RadzenButton Icon="skip_next" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" Disabled="@(!Player.Available)"
+                  Click="@(() => Run(() => Api.NextAsync(Player.Id)))" title="@L["Next"]" />
+
+    <RadzenButton Icon="@(Player.Muted ? "volume_off" : "volume_up")" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" Disabled="@(!Player.Available)"
+                  Click="@(() => Run(() => Api.SetMutedAsync(Player.Id, !Player.Muted)))" title="@(Player.Muted ? L["Unmute"] : L["Mute"])" />
+    <RadzenSlider TValue="int" Min="0" Max="100" Value="@((int)Math.Round(Player.Volume * 100))" Disabled="@(!Player.Available)"
+                  Change="@(v => Run(() => Api.SetVolumeAsync(Player.Id, v / 100.0)))" Style="width: 8rem;" title="@L["Volume"]" />
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public PlayerDto Player { get; set; } = default!;
+
+    private async Task Run(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+}

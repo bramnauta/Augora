@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+**/audiocentral.db*
+**/.vs/
+**/.idea/
+**/*.user
+.git/
+tests/
+docs/

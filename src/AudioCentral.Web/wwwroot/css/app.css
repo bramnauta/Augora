@@ -1,0 +1,103 @@
+html, body {
+    margin: 0;
+    background: var(--rz-base-background-color);
+}
+
+.media-image {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--rz-border-radius);
+    object-fit: cover;
+    background: var(--rz-base-700);
+    flex-shrink: 0;
+}
+
+.media-image.large {
+    width: 96px;
+    height: 96px;
+}
+
+.media-row {
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--rz-border-radius);
+}
+
+.media-row:hover {
+    background: var(--rz-base-800);
+}
+
+.media-row.current {
+    background: var(--rz-primary-darker);
+}
+
+.ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.now-playing-bar {
+    padding: 0.5rem 1rem;
+}
+
+#blazor-error-ui {
+    background: #b32121;
+    color: white;
+    bottom: 0;
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+#blazor-error-ui .reload {
+    color: white;
+}
+
+.loading-progress {
+    position: absolute;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    inset: 20vh 0 auto 0;
+    margin: 0 auto 0 auto;
+}
+
+.loading-progress circle {
+    fill: none;
+    stroke: #333;
+    stroke-width: 0.6rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: #4db6ac;
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    color: #ccc;
+    font-family: sans-serif;
+    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+.loading-progress-text:after {
+    content: var(--blazor-load-percentage-text, "Laden");
+}

@@ -1,0 +1,62 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject PlayerStore Store
+@inject CultureService Culture
+@inject IStringLocalizer<Strings> L
+
+<RadzenComponents />
+
+<RadzenLayout Style="grid-template-areas: 'rz-header rz-header' 'rz-sidebar rz-body' 'rz-footer rz-footer'; height: 100vh;">
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Style="padding: 0 0.5rem;">
+            <RadzenSidebarToggle Click="@(() => _sidebarExpanded = !_sidebarExpanded)" />
+            <RadzenIcon Icon="speaker_group" />
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0" Style="flex: 1;">@L["AppTitle"]</RadzenText>
+            <RadzenDropDown TValue="string" Data="@Store.Players" TextProperty="@nameof(PlayerDto.Name)" ValueProperty="@nameof(PlayerDto.Id)"
+                            Value="@Store.SelectedPlayerId" Change="@(v => Store.SelectPlayerAsync(v as string))"
+                            Placeholder="@L["SelectPlayer"]" Style="width: 14rem;" />
+            <RadzenDropDown TValue="string" Data="@CultureService.Supported.Select(s => new { s.Code, s.Name })" TextProperty="Name" ValueProperty="Code"
+                            Value="@CultureService.Current" Change="@(v => Culture.SetAsync((string)v))" Style="width: 9rem;" title="@L["Language"]" />
+        </RadzenStack>
+    </RadzenHeader>
+
+    <RadzenSidebar @bind-Expanded="_sidebarExpanded">
+        <RadzenPanelMenu>
+            <RadzenPanelMenuItem Text="@L["Nav_Players"]" Icon="speaker" Path="/" />
+            <RadzenPanelMenuItem Text="@L["Nav_Browse"]" Icon="library_music" Path="/browse" />
+            <RadzenPanelMenuItem Text="@L["Nav_Search"]" Icon="search" Path="/search" />
+            <RadzenPanelMenuItem Text="@L["Nav_Queue"]" Icon="queue_music" Path="/queue" />
+            <RadzenPanelMenuItem Text="@L["Nav_Settings"]" Icon="settings" Path="/settings" />
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+
+    <RadzenBody>
+        @if (_initialized && !Store.IsConnected)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">@L["Reconnecting"]</RadzenAlert>
+        }
+        <div class="rz-p-4">
+            @Body
+        </div>
+    </RadzenBody>
+
+    <RadzenFooter>
+        <NowPlayingBar Player="@Store.SelectedPlayer" />
+    </RadzenFooter>
+</RadzenLayout>
+
+@code {
+    private bool _sidebarExpanded = true;
+    private bool _initialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Store.Changed += OnChanged;
+        await Store.InitializeAsync();
+        _initialized = true;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Store.Changed -= OnChanged;
+}

@@ -1,0 +1,330 @@
+using AudioCentral.Contracts;
+using AudioCentral.Core;
+using AudioCentral.Core.Players;
+using Microsoft.Extensions.Logging;
+using Sharpcaster;
+using Sharpcaster.Models.ChromecastStatus;
+using Sharpcaster.Models.Media;
+
+namespace AudioCentral.Players.GoogleCast;
+
+/// <summary>
+/// A Google Cast device or group, played through the Default Media Receiver.
+/// Keeps a connection open so status changes (also from other apps) are visible immediately.
+/// </summary>
+internal sealed class CastPlayer : IPlayer, IAsyncDisposable
+{
+    private const string DefaultMediaReceiver = "CC1AD845";
+    private const string Backdrop = "E8C28D3C";
+
+    private readonly ILogger _logger;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly TimeSpan _reconnectInterval;
+    private readonly SemaphoreSlim _commandLock = new(1, 1);
+    private readonly CancellationTokenSource _stopping = new();
+    private readonly Lock _stateLock = new();
+
+    private Task? _connectionLoop;
+    private ChromecastClient? _client;
+    private ChromecastStatus? _receiverStatus;
+    private MediaStatus? _mediaStatus;
+    private PlayMedia? _current;
+    private long? _endedMediaSession;
+    private PlayerStatus _status = PlayerStatus.Unavailable;
+
+    public CastPlayer(CastDevice device, TimeSpan reconnectInterval, ILoggerFactory loggerFactory)
+    {
+        Device = device;
+        _reconnectInterval = reconnectInterval;
+        _loggerFactory = loggerFactory;
+        _logger = loggerFactory.CreateLogger<CastPlayer>();
+    }
+
+    public CastDevice Device { get; private set; }
+
+    public string Id => Device.Id;
+
+    public string Name => Device.Name;
+
+    public string ProviderId => CastPlayerProvider.ProviderId;
+
+    public PlayerKind Kind => Device.Kind;
+
+    public string? Model => Device.Model;
+
+    public PlayerFeatures Features => PlayerFeatures.Volume | PlayerFeatures.Mute | PlayerFeatures.Pause | PlayerFeatures.Seek;
+
+    public PlayerStatus Status
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _status;
+            }
+        }
+    }
+
+    public event EventHandler? StatusChanged;
+
+    public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
+
+    public void Start() => _connectionLoop ??= Task.Run(() => RunConnectionLoopAsync(_stopping.Token));
+
+    /// <summary>The device moved (new IP or port after a DHCP renewal); reconnect to the new address.</summary>
+    public void UpdateDevice(CastDevice device)
+    {
+        if (device.Host == Device.Host && device.Port == Device.Port && device.Name == Device.Name)
+        {
+            return;
+        }
+
+        _logger.LogInformation("Cast device {Name} moved to {Host}:{Port}", device.Name, device.Host, device.Port);
+        Device = device;
+        _ = DisconnectAsync();
+    }
+
+    public Task PlayAsync(PlayMedia media, CancellationToken cancellationToken) =>
+        RunCommandAsync(async client =>
+        {
+            var app = client.ChromecastStatus?.Application;
+            if (app?.AppId != DefaultMediaReceiver)
+            {
+                await client.LaunchApplicationAsync(DefaultMediaReceiver, false);
+            }
+
+            lock (_stateLock)
+            {
+                _current = media;
+                _endedMediaSession = null;
+            }
+
+            await client.MediaChannel.LoadAsync(ToCastMedia(media), true, []);
+        }, cancellationToken);
+
+    public Task PauseAsync(CancellationToken cancellationToken) =>
+        RunCommandAsync(client => client.MediaChannel.PauseAsync(), cancellationToken);
+
+    public Task ResumeAsync(CancellationToken cancellationToken) =>
+        RunCommandAsync(client => client.MediaChannel.PlayAsync(), cancellationToken);
+
+    public Task StopAsync(CancellationToken cancellationToken) =>
+        RunCommandAsync(async client =>
+        {
+            lock (_stateLock)
+            {
+                _current = null;
+            }
+
+            if (client.MediaStatus is not null)
+            {
+                await client.MediaChannel.StopAsync();
+            }
+        }, cancellationToken);
+
+    public Task SetVolumeAsync(double level, CancellationToken cancellationToken) =>
+        RunCommandAsync(client => client.ReceiverChannel.SetVolume(Math.Clamp(level, 0, 1)), cancellationToken);
+
+    public Task SetMutedAsync(bool muted, CancellationToken cancellationToken) =>
+        RunCommandAsync(client => client.ReceiverChannel.SetMute(muted), cancellationToken);
+
+    public async ValueTask DisposeAsync()
+    {
+        await _stopping.CancelAsync();
+        await DisconnectAsync();
+        if (_connectionLoop is not null)
+        {
+            await _connectionLoop.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+
+        _stopping.Dispose();
+        _commandLock.Dispose();
+    }
+
+    private async Task RunCommandAsync(Func<ChromecastClient, Task> command, CancellationToken cancellationToken)
+    {
+        await _commandLock.WaitAsync(cancellationToken);
+        try
+        {
+            var client = _client ?? throw new AudioCentralException(ErrorCodes.PlayerUnavailable, $"'{Name}' is not connected.", 409);
+            await command(client).WaitAsync(TimeSpan.FromSeconds(20), cancellationToken);
+        }
+        catch (TimeoutException ex)
+        {
+            throw new AudioCentralException(ErrorCodes.PlaybackFailed, $"'{Name}' did not respond.", 504, ex);
+        }
+        finally
+        {
+            _commandLock.Release();
+        }
+    }
+
+    private async Task RunConnectionLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var disconnected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            try
+            {
+                var client = new ChromecastClient(_loggerFactory.CreateLogger<ChromecastClient>());
+                client.Disconnected += (_, _) => disconnected.TrySetResult();
+                client.ReceiverChannel.ReceiverStatusChanged += (_, status) => OnReceiverStatus(status);
+                client.MediaChannel.StatusChanged += (_, status) => OnMediaStatus(status);
+
+                var status = await client.ConnectChromecast(Device.ToReceiver()).WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+                _client = client;
+                _logger.LogInformation("Connected to Cast device {Name} at {Host}:{Port}", Name, Device.Host, Device.Port);
+                OnReceiverStatus(status);
+
+                await disconnected.Task.WaitAsync(cancellationToken);
+                _logger.LogInformation("Cast device {Name} disconnected", Name);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Connecting to Cast device {Name} at {Host}:{Port} failed", Name, Device.Host, Device.Port);
+            }
+
+            await DisconnectAsync();
+            await Task.Delay(_reconnectInterval, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+    }
+
+    private async Task DisconnectAsync()
+    {
+        var client = Interlocked.Exchange(ref _client, null);
+        lock (_stateLock)
+        {
+            _receiverStatus = null;
+            _mediaStatus = null;
+        }
+
+        UpdateStatus();
+        if (client is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await client.DisconnectAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Disconnecting from {Name} failed", Name);
+        }
+    }
+
+    private void OnReceiverStatus(ChromecastStatus? status)
+    {
+        if (status is null)
+        {
+            return;
+        }
+
+        lock (_stateLock)
+        {
+            _receiverStatus = status;
+        }
+
+        UpdateStatus();
+    }
+
+    private void OnMediaStatus(MediaStatus? status)
+    {
+        PlaybackEndReason? ended = null;
+        lock (_stateLock)
+        {
+            _mediaStatus = status;
+
+            // Idle with a reason means the media stopped by itself; report it once per media session.
+            if (status is { PlayerState: PlayerStateType.Idle, IdleReason: { } reason }
+                && _current is not null
+                && _endedMediaSession != status.MediaSessionId
+                && reason is "FINISHED" or "ERROR")
+            {
+                _endedMediaSession = status.MediaSessionId;
+                ended = reason == "FINISHED" ? PlaybackEndReason.Finished : PlaybackEndReason.Error;
+            }
+        }
+
+        UpdateStatus();
+        if (ended is { } endReason)
+        {
+            _logger.LogInformation("Playback on {Name} ended: {Reason}", Name, endReason);
+            PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(endReason));
+        }
+    }
+
+    private void UpdateStatus()
+    {
+        lock (_stateLock)
+        {
+            _status = BuildStatus();
+        }
+
+        StatusChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private PlayerStatus BuildStatus()
+    {
+        if (_client is null || _receiverStatus is null)
+        {
+            return PlayerStatus.Unavailable;
+        }
+
+        var volume = _receiverStatus.Volume;
+        var app = _receiverStatus.Application;
+        var isOurs = app?.AppId == DefaultMediaReceiver
+            && _current is not null
+            && (_mediaStatus?.Media is null || _mediaStatus.Media.ContentUrl == _current.StreamUrl.ToString() || _mediaStatus.Media.ContentId == _current.StreamUrl.ToString());
+
+        string? external = app is null || app.AppId == Backdrop || isOurs ? null : app.DisplayName;
+
+        var state = _mediaStatus?.PlayerState switch
+        {
+            PlayerStateType.Playing => PlaybackState.Playing,
+            PlayerStateType.Paused => PlaybackState.Paused,
+            PlayerStateType.Buffering or PlayerStateType.Loading => PlaybackState.Buffering,
+            _ => PlaybackState.Idle,
+        };
+
+        NowPlayingDto? nowPlaying = null;
+        if (isOurs && _current is { } current && state != PlaybackState.Idle)
+        {
+            nowPlaying = new NowPlayingDto(
+                current.ItemUri,
+                current.Title,
+                current.Subtitle,
+                current.ImageUrl,
+                current.IsLive,
+                _mediaStatus is { } media ? TimeSpan.FromSeconds(media.CurrentTime) : null,
+                current.Duration);
+        }
+        else if (external is not null && _mediaStatus?.Media?.Metadata is { } metadata)
+        {
+            nowPlaying = new NowPlayingDto(null, metadata.Title ?? external, metadata.SubTitle, metadata.Images?.FirstOrDefault()?.Url, false, null, null);
+        }
+
+        return new PlayerStatus(true, state, volume?.Level ?? 0, volume?.Muted ?? false, nowPlaying, external);
+    }
+
+    private static Media ToCastMedia(PlayMedia media) => new()
+    {
+        ContentUrl = media.StreamUrl.ToString(),
+        ContentId = media.StreamUrl.ToString(),
+        ContentType = media.ContentType,
+        StreamType = media.IsLive ? StreamType.Live : StreamType.Buffered,
+        Duration = media.Duration?.TotalSeconds,
+        Metadata = new MusicTrackMetadata
+        {
+            MetadataType = MetadataType.Music,
+            Title = media.Title,
+            Artist = media.Subtitle,
+            Images = media.ImageUrl is null ? [] : [new Image { Url = media.ImageUrl }],
+        },
+    };
+}

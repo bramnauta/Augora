@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <!-- CA1848/CA1873: LoggerMessage delegates are not worth the ceremony here; CA2007: ASP.NET Core has no sync context -->
+    <NoWarn>$(NoWarn);CA1848;CA1873;CA2007;CA1515;CA1711;CA1716;CA1056;CA1054;CA1055;CA2234;CA1031;CA1062;CA1303;CA1305;CA1307;CA1309;CA1310;CA1311;CA1304;CA1002;CA1819;CA1724</NoWarn>
+  </PropertyGroup>
+</Project>

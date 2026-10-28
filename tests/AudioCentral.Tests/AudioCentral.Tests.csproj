@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AudioCentral.Core\AudioCentral.Core.csproj" />
+    <ProjectReference Include="..\..\src\AudioCentral.Providers.TuneIn\AudioCentral.Providers.TuneIn.csproj" />
+    <ProjectReference Include="..\..\src\AudioCentral.Players.GoogleCast\AudioCentral.Players.GoogleCast.csproj" />
+  </ItemGroup>
+
+</Project>

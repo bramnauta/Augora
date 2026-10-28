@@ -1,0 +1,53 @@
+@page "/browse"
+@inject ApiClient Api
+@inject IJSRuntime JS
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@(_result?.Title ?? L["Nav_Browse"]) · AudioCentral</PageTitle>
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+    @if (Uri is not null)
+    {
+        <RadzenButton Icon="arrow_back" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["Back"]" Click="@(() => JS.InvokeVoidAsync("history.back"))" />
+    }
+    <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-m-0">@(Uri is null ? L["Library"] : _result?.Title)</RadzenText>
+</RadzenStack>
+
+@if (_error is not null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">@_error</RadzenAlert>
+}
+else if (_result is null)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else if (_result.Items.Count == 0)
+{
+    <RadzenText TextStyle="TextStyle.Body1">@L["EmptyFolder"]</RadzenText>
+}
+else
+{
+    <MediaItemList Items="@_result.Items" />
+}
+
+@code {
+    private BrowseResultDto? _result;
+    private string? _error;
+
+    [SupplyParameterFromQuery]
+    public string? Uri { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _result = null;
+        _error = null;
+        try
+        {
+            _result = await Api.BrowseAsync(Uri);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

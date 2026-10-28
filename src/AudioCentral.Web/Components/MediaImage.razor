@@ -1,0 +1,25 @@
+@if (!string.IsNullOrEmpty(Url) && !_failed)
+{
+    <img src="@Url" alt="" loading="lazy" class="media-image @(Large ? "large" : "")" @onerror="@(() => _failed = true)" />
+}
+else
+{
+    <div class="media-image @(Large ? "large" : "")" style="display: flex; align-items: center; justify-content: center;">
+        <RadzenIcon Icon="@Icon" />
+    </div>
+}
+
+@code {
+    private bool _failed;
+
+    [Parameter]
+    public string? Url { get; set; }
+
+    [Parameter]
+    public string Icon { get; set; } = "music_note";
+
+    [Parameter]
+    public bool Large { get; set; }
+
+    protected override void OnParametersSet() => _failed = false;
+}

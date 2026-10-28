@@ -1,0 +1,48 @@
+@inject IStringLocalizer<Strings> L
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" class="ellipsis" Style="flex: 1;">
+    <MediaImage Url="@Player.NowPlaying?.ImageUrl" Icon="@KindIcon(Player.Kind)" />
+    <RadzenStack Gap="0" class="ellipsis">
+        <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0 ellipsis">@Player.Name</RadzenText>
+        @if (!Player.Available)
+        {
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">@L["Unavailable"]</RadzenText>
+        }
+        else if (Player.NowPlaying is { } nowPlaying)
+        {
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 ellipsis">
+                @if (nowPlaying.IsLive)
+                {
+                    <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="@L["Live"]" class="rz-me-1" />
+                }
+                @nowPlaying.Title
+            </RadzenText>
+            @if (!string.IsNullOrEmpty(nowPlaying.Subtitle))
+            {
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 ellipsis">@nowPlaying.Subtitle</RadzenText>
+            }
+        }
+        else
+        {
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">@L["NothingPlaying"]</RadzenText>
+        }
+        @if (Player.ExternalSource is { } external)
+        {
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">@L["ControlledBy", external]</RadzenText>
+        }
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public PlayerDto Player { get; set; } = default!;
+
+    public static string KindIcon(PlayerKind kind) => kind switch
+    {
+        PlayerKind.Tv => "tv",
+        PlayerKind.DeviceGroup or PlayerKind.SyncGroup => "speaker_group",
+        PlayerKind.Browser => "computer",
+        PlayerKind.Phone => "smartphone",
+        _ => "speaker",
+    };
+}

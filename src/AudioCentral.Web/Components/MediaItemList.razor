@@ -1,0 +1,92 @@
+@inject ApiClient Api
+@inject PlayerStore Store
+@inject NavigationManager Navigation
+@inject NotificationService Notifications
+@inject IStringLocalizer<Strings> L
+
+@* Browse/search results: folders open, playable items play on the selected player. *@
+<RadzenStack Gap="0.25rem">
+    @foreach (var item in Items)
+    {
+        <RadzenStack @key="item.Uri" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" class="media-row"
+                     @onclick="@(() => OpenAsync(item))">
+            <MediaImage Url="@item.ImageUrl" Icon="@TypeIcon(item.Type)" />
+            <RadzenStack Gap="0" class="ellipsis" Style="flex: 1;">
+                <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0 ellipsis">@item.Name</RadzenText>
+                @if (!string.IsNullOrEmpty(item.Subtitle))
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 ellipsis">@item.Subtitle</RadzenText>
+                }
+            </RadzenStack>
+            @if (item.Duration is { } duration)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">@FormatDuration(duration)</RadzenText>
+            }
+            @if (item.IsPlayable)
+            {
+                <RadzenButton Icon="playlist_play" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["PlayNext"]"
+                              Click="@(() => PlayAsync(item, QueueOption.Next))" @onclick:stopPropagation="true" />
+                <RadzenButton Icon="playlist_add" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["AddToQueue"]"
+                              Click="@(() => PlayAsync(item, QueueOption.Add))" @onclick:stopPropagation="true" />
+                <RadzenButton Icon="play_arrow" Variant="Variant.Text" ButtonStyle="ButtonStyle.Primary" title="@L["Play"]"
+                              Click="@(() => PlayAsync(item, QueueOption.Replace))" @onclick:stopPropagation="true" />
+            }
+            else if (item.IsBrowsable)
+            {
+                <RadzenIcon Icon="chevron_right" />
+            }
+        </RadzenStack>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<MediaItemDto> Items { get; set; } = [];
+
+    private Task OpenAsync(MediaItemDto item)
+    {
+        if (item.IsBrowsable)
+        {
+            Navigation.NavigateTo($"browse?uri={Uri.EscapeDataString(item.Uri)}");
+            return Task.CompletedTask;
+        }
+
+        return item.IsPlayable ? PlayAsync(item, QueueOption.Replace) : Task.CompletedTask;
+    }
+
+    private async Task PlayAsync(MediaItemDto item, QueueOption option)
+    {
+        if (Store.SelectedPlayer is not { } player)
+        {
+            Notifications.Notify(NotificationSeverity.Warning, L["NoPlayerSelected"]);
+            return;
+        }
+
+        try
+        {
+            await Api.PlayAsync(player.Id, item.Uri, option);
+            var message = option is QueueOption.Replace or QueueOption.Play ? L["PlayingOn", player.Name] : L["Added", player.Name];
+            Notifications.Notify(NotificationSeverity.Success, message, item.Name, duration: 2500);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message, duration: 8000);
+        }
+    }
+
+    private static string FormatDuration(TimeSpan duration) =>
+        duration.TotalHours >= 1 ? duration.ToString(@"h\:mm\:ss") : duration.ToString(@"m\:ss");
+
+    public static string TypeIcon(MediaType type) => type switch
+    {
+        MediaType.Radio => "radio",
+        MediaType.Podcast => "podcasts",
+        MediaType.Episode => "mic",
+        MediaType.Album => "album",
+        MediaType.Artist => "person",
+        MediaType.Playlist => "queue_music",
+        MediaType.Audiobook => "menu_book",
+        MediaType.Folder => "folder",
+        _ => "music_note",
+    };
+}

@@ -1,0 +1,24 @@
+# Example deployment on a Linux host.
+#
+# Host networking lets mDNS discovery find Google Cast devices and gives players a stable
+# address for the stream endpoint. If the speakers live in another VLAN, either reflect mDNS
+# between the VLANs (Avahi / router) or add them under Settings, and make sure the speakers
+# can reach this host on port 4727.
+services:
+  audiocentral:
+    build: .
+    image: audiocentral:latest
+    container_name: audiocentral
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - audiocentral-data:/data
+    environment:
+      TZ: Europe/Amsterdam
+      # Address under which the speakers reach this host; leave empty to auto-detect the LAN IP.
+      AudioCentral__StreamBaseUrl: ""
+      # Public url when running behind a reverse proxy.
+      AudioCentral__PublicBaseUrl: ""
+
+volumes:
+  audiocentral-data:

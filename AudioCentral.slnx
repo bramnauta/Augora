@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="src/AudioCentral.AppHost/AudioCentral.AppHost.csproj" />
+  <Project Path="src/AudioCentral.Contracts/AudioCentral.Contracts.csproj" />
+  <Project Path="src/AudioCentral.Core/AudioCentral.Core.csproj" />
+  <Project Path="src/AudioCentral.Players.GoogleCast/AudioCentral.Players.GoogleCast.csproj" />
+  <Project Path="src/AudioCentral.Providers.TuneIn/AudioCentral.Providers.TuneIn.csproj" />
+  <Project Path="src/AudioCentral.Server/AudioCentral.Server.csproj" />
+  <Project Path="src/AudioCentral.ServiceDefaults/AudioCentral.ServiceDefaults.csproj" />
+  <Project Path="src/AudioCentral.Web/AudioCentral.Web.csproj" />
+  <Project Path="tests/AudioCentral.Tests/AudioCentral.Tests.csproj" />
+</Solution>

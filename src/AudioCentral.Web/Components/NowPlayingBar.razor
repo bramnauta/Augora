@@ -1,0 +1,20 @@
+@inject IStringLocalizer<Strings> L
+
+<div class="now-playing-bar">
+    @if (Player is null)
+    {
+        <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">@L["NoPlayerSelected"]</RadzenText>
+    }
+    else
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="1rem">
+            <NowPlayingInfo Player="@Player" />
+            <PlayerControls Player="@Player" />
+        </RadzenStack>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public PlayerDto? Player { get; set; }
+}

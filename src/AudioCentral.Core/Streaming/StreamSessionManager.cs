@@ -3,7 +3,8 @@ using System.Security.Cryptography;
 
 namespace AudioCentral.Core.Streaming;
 
-public sealed record StreamSession(string Token, string PlayerId, ResolvedStream Stream, DateTimeOffset CreatedAt)
+/// <param name="Stream">A <see cref="ResolvedStream"/>, <see cref="FileStreamSource"/> or <see cref="ProducedStreamSource"/>.</param>
+public sealed record StreamSession(string Token, string PlayerId, StreamSource Stream, DateTimeOffset CreatedAt)
 {
     /// <summary>Path of the stream endpoint, relative to the server root.</summary>
     public string RelativePath => $"/api/stream/{Token}";
@@ -19,7 +20,7 @@ public sealed class StreamSessionManager(TimeProvider timeProvider)
 
     private readonly ConcurrentDictionary<string, StreamSession> _sessions = new();
 
-    public StreamSession Create(string playerId, ResolvedStream stream)
+    public StreamSession Create(string playerId, StreamSource stream)
     {
         RemoveExpired();
 

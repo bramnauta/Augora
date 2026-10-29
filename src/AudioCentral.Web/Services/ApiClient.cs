@@ -48,8 +48,15 @@ public sealed class ApiClient(HttpClient http)
 
     public Task<SearchResultDto> SearchAsync(string query) => GetAsync<SearchResultDto>($"api/search?q={Uri.EscapeDataString(query)}");
 
-    public Task<QueueDto> PlayAsync(string playerId, string uri, QueueOption option = QueueOption.Replace) =>
-        SendAsync<QueueDto>(HttpMethod.Post, $"api/players/{Escape(playerId)}/play", new PlayRequest(uri, option));
+    public Task<QueueDto> PlayAsync(string playerId, string uri, QueueOption option = QueueOption.Replace, string? takeoverPlayerId = null) =>
+        SendAsync<QueueDto>(HttpMethod.Post, $"api/players/{Escape(playerId)}/play", new PlayRequest(uri, option, takeoverPlayerId));
+
+    public Task<SpotifyStatusDto> GetSpotifyAsync() => GetAsync<SpotifyStatusDto>("api/spotify");
+
+    public Task<LinkSpotifyAccountResponse> LinkSpotifyAccountAsync(LinkSpotifyAccountRequest request) =>
+        SendAsync<LinkSpotifyAccountResponse>(HttpMethod.Post, "api/spotify/link", request);
+
+    public Task RemoveSpotifyAccountAsync(string id) => SendAsync(HttpMethod.Delete, $"api/spotify/accounts/{Escape(id)}");
 
     public Task PauseAsync(string playerId) => SendAsync(HttpMethod.Post, $"api/players/{Escape(playerId)}/pause");
 
@@ -131,9 +138,11 @@ public sealed class ApiClient(HttpClient http)
 
         string? title = null;
         string? code = null;
+        JsonElement? details = null;
         try
         {
             using var problem = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            details = problem.RootElement.Clone();
             if (problem.RootElement.TryGetProperty("title", out var t))
             {
                 title = t.GetString();
@@ -148,13 +157,19 @@ public sealed class ApiClient(HttpClient http)
         {
         }
 
-        throw new ApiException(title ?? response.ReasonPhrase ?? response.StatusCode.ToString(), code, (int)response.StatusCode);
+        throw new ApiException(title ?? response.ReasonPhrase ?? response.StatusCode.ToString(), code, (int)response.StatusCode, details);
     }
 }
 
-public sealed class ApiException(string message, string? code, int statusCode) : Exception(message)
+public sealed class ApiException(string message, string? code, int statusCode, JsonElement? problem = null) : Exception(message)
 {
     public string? Code { get; } = code;
 
     public int StatusCode { get; } = statusCode;
+
+    /// <summary>Reads an extension member of the Problem Details, e.g. <c>holders</c>.</summary>
+    public T? GetExtension<T>(string name) =>
+        problem is { ValueKind: JsonValueKind.Object } root && root.TryGetProperty(name, out var value)
+            ? value.Deserialize<T>(JsonSerializerOptions.Web)
+            : default;
 }

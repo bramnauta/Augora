@@ -1,8 +1,8 @@
 # AudioCentral
 
-Self-hosted muziekserver: bronnen (TuneIn, later Spotify, lokale
-bestanden, podcasts, Nextory) afspelen op Google Cast-apparaten en -groepen, later ook op Android
-en in de browser. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp en roadmap.
+Self-hosted muziekserver: bronnen (TuneIn, Spotify, lokale
+bestanden, podcasts, Nextory) afspelen op Google Cast-apparaten en -groepen, in de browser en
+op Android. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp en roadmap.
 
 ## Status
 
@@ -12,9 +12,32 @@ en in de browser. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp 
 - ✅ Blazor WebAssembly-UI (Radzen), Nederlands en Engels
 - ✅ Inloggen: lokale accounts met admin-rol, API-tokens (Home Assistant), access/refresh-tokens (apps), optioneel OIDC
 - ✅ Browser als speler (ook op telefoon), via hetzelfde protocol dat de Android-app gaat gebruiken
-- ⏳ Spotify, lokale bestanden, podcasts, Android, Home Assistant, Nextory
+- ✅ Spotify: meerdere accounts, bladeren (playlists, nummers, albums, artiesten), zoeken, afspelen via go-librespot
+- ⏳ Lokale bestanden, podcasts, Android, Home Assistant, Nextory
 
 Bij de eerste start vraagt de UI om het eerste account aan te maken; dat wordt beheerder.
+
+## Spotify instellen
+
+1. Maak een app op [developer.spotify.com](https://developer.spotify.com/dashboard) (Web API) en zet
+   als redirect-URI `https://<jouw-host>/api/spotify/callback`. Spotify accepteert alleen https, behalve
+   voor `http://127.0.0.1:<poort>`. De exacte URI staat op de Spotify-pagina in AudioCentral.
+2. Zet de client-id in `Providers__Spotify__ClientId`, of vul per account een eigen client-id in.
+   Een app in development mode staat maximaal vijf Spotify-gebruikers toe, die je in het dashboard
+   moet toevoegen; de eigenaar van de app heeft Premium nodig.
+3. Koppel onder **Spotify** in de UI je account. Iedere gebruiker koppelt zijn eigen account;
+   beheerders kunnen ook gedeelde accounts koppelen.
+
+Spotify staat één stream per account toe. Bij afspelen kiest AudioCentral eerst je eigen account,
+dan een gedeeld account, dan een vrij account van een ander. Is er geen account vrij, dan biedt de UI
+aan een stream te stoppen; via de API krijg je `409 spotify_no_free_account` met de lijst `holders`
+en kun je het verzoek herhalen met `takeoverPlayerId`.
+
+Per account draait een [go-librespot](https://github.com/devgianlu/go-librespot)-proces; ffmpeg zet
+de audio om naar MP3 320 kbps. Beide zitten in de Docker-image. Buiten Docker moeten `go-librespot`
+en `ffmpeg` op het PATH staan (of stel `Providers__Spotify__LibrespotPath` / `__FfmpegPath` in).
+Spotify geeft apps sinds februari 2026 alleen de inhoud van playlists die je zelf bezit of waaraan je
+meewerkt; gevolgde playlists zijn daardoor niet af te spelen.
 
 ## Ontwikkelen
 
@@ -54,6 +77,7 @@ Belangrijke instellingen (omgevingsvariabelen):
 | `AudioCentral__StreamBaseUrl` | URL waarop spelers de server bereiken, bijv. `http://192.168.1.10:4727`. Leeg = LAN-IP detecteren. |
 | `AudioCentral__PublicBaseUrl` | Publieke URL achter een reverse proxy. |
 | `Providers__TuneIn__Username` | TuneIn-gebruikersnaam voor favorieten. |
+| `Providers__Spotify__ClientId` | Standaard client-id van je Spotify-app. |
 | `Players__GoogleCast__Discovery` | `false` om mDNS uit te zetten (alleen handmatige apparaten). |
 | `Authentication__Oidc__Authority` | Issuer-URL van je OIDC-provider; leeg = geen SSO. Redirect-URI: `https://<host>/signin-oidc`. |
 | `Authentication__Oidc__ClientId` / `__ClientSecret` | Client-gegevens bij de OIDC-provider. |

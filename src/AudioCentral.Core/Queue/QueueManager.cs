@@ -25,6 +25,8 @@ public sealed class QueueManager
     private readonly IQueueStore _store;
     private readonly IEventPublisher _events;
     private readonly ILogger<QueueManager> _logger;
+    private readonly ICurrentUser _currentUser;
+    private readonly ConcurrentDictionary<string, string> _lastUsers = new(StringComparer.OrdinalIgnoreCase);
 
     public QueueManager(
         PlayerManager players,
@@ -34,8 +36,10 @@ public sealed class QueueManager
         IStreamUrlProvider urls,
         IQueueStore store,
         IEventPublisher events,
+        ICurrentUser currentUser,
         ILogger<QueueManager> logger)
     {
+        _currentUser = currentUser;
         _players = players;
         _library = library;
         _resolver = resolver;
@@ -51,19 +55,21 @@ public sealed class QueueManager
     public Task<QueueDto> GetQueueAsync(string playerId, CancellationToken cancellationToken) =>
         WithQueueAsync(playerId, (queue, _) => Task.FromResult(queue.ToDto()), persist: false, cancellationToken);
 
-    public Task<QueueDto> PlayAsync(string playerId, string uri, QueueOption option, CancellationToken cancellationToken) =>
+    /// <param name="takeoverPlayerId">Player whose provider resource (Spotify account) may be taken when none is free.</param>
+    public Task<QueueDto> PlayAsync(string playerId, string uri, QueueOption option, CancellationToken cancellationToken, string? takeoverPlayerId = null) =>
         WithQueueAsync(playerId, async (queue, ct) =>
         {
             var player = _players.GetAvailable(playerId);
             var item = await _library.GetItemAsync(MediaItemRef.Parse(uri), ct);
-            if (!item.IsPlayable)
+            var items = await _library.GetQueueItemsAsync(item, ct);
+            if (items.Count == 0)
             {
                 throw new AudioCentralException(ErrorCodes.ItemNotPlayable, $"'{item.Name}' cannot be played.");
             }
 
-            if (queue.Enqueue([item], option) is { } index)
+            if (queue.Enqueue(items, option) is { } index)
             {
-                await PlayIndexAsync(player, queue, index, ct);
+                await PlayIndexAsync(player, queue, index, ct, takeoverPlayerId);
             }
 
             return queue.ToDto();
@@ -144,19 +150,26 @@ public sealed class QueueManager
             return queue.ToDto();
         }, persist: true, cancellationToken);
 
-    private async Task PlayIndexAsync(IPlayer player, PlayerQueue queue, int index, CancellationToken cancellationToken)
+    private async Task PlayIndexAsync(IPlayer player, PlayerQueue queue, int index, CancellationToken cancellationToken, string? takeoverPlayerId = null)
     {
         queue.SetCurrent(index);
         var item = queue.Items[index].Item;
         var provider = _library.GetProvider(item.Ref.Provider);
 
-        ResolvedStream stream;
+        // Remember who started playback, so the queue advancing on its own keeps using that user's accounts.
+        var userId = _currentUser.UserId ?? _lastUsers.GetValueOrDefault(player.Id);
+        if (userId is not null)
+        {
+            _lastUsers[player.Id] = userId;
+        }
+
+        StreamSource stream;
         try
         {
-            stream = await provider.ResolveStreamAsync(item.Ref, cancellationToken) switch
+            stream = await provider.ResolveStreamAsync(item.Ref, new PlaybackContext(player.Id, userId, takeoverPlayerId), cancellationToken) switch
             {
                 HttpStreamSource http => await _resolver.ResolveAsync(http, cancellationToken),
-                var other => throw new NotSupportedException($"Stream source {other.GetType().Name} is not supported yet."),
+                var other => other,
             };
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or NotSupportedException)
@@ -166,10 +179,10 @@ public sealed class QueueManager
 
         Uri url;
         string path;
-        if (stream.Direct)
+        if (stream is ResolvedStream { Direct: true } direct)
         {
-            url = stream.Url;
-            path = stream.Url.ToString();
+            url = direct.Url;
+            path = direct.Url.ToString();
         }
         else
         {
@@ -181,7 +194,7 @@ public sealed class QueueManager
         _logger.LogInformation("Playing {Item} on {Player} via {Url}", item.Ref, player.Name, url);
 
         await player.PlayAsync(
-            new PlayMedia(url, path, stream.ContentType, stream.IsLive, item.Ref.ToString(), item.Name, item.Subtitle, item.ImageUrl, item.Duration),
+            new PlayMedia(url, path, stream.GetContentType(), stream.IsLive, item.Ref.ToString(), item.Name, item.Subtitle, item.ImageUrl, item.Duration),
             cancellationToken);
     }
 

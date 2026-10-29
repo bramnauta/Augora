@@ -81,7 +81,7 @@ public sealed class TuneInProvider(IHttpClientFactory httpClientFactory, IOption
         return Remember([result]).First();
     }
 
-    public async Task<StreamSource> ResolveStreamAsync(MediaItemRef item, CancellationToken cancellationToken)
+    public async Task<StreamSource> ResolveStreamAsync(MediaItemRef item, PlaybackContext context, CancellationToken cancellationToken)
     {
         var response = await GetAsync($"Tune.ashx?id={Uri.EscapeDataString(item.Id)}", TuneInJsonContext.Default.OpmlResponseOpmlStream, cancellationToken);
         var stream = TuneInMapper.SelectStream(response.Body ?? [])

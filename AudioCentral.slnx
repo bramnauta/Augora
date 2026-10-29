@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AudioCentral.Providers.Spotify/AudioCentral.Providers.Spotify.csproj" />
+  </Folder>
   <Project Path="src/AudioCentral.AppHost/AudioCentral.AppHost.csproj" />
   <Project Path="src/AudioCentral.Contracts/AudioCentral.Contracts.csproj" />
   <Project Path="src/AudioCentral.Core/AudioCentral.Core.csproj" />

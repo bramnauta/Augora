@@ -11,6 +11,7 @@ COPY src/AudioCentral.Contracts/AudioCentral.Contracts.csproj src/AudioCentral.C
 COPY src/AudioCentral.Core/AudioCentral.Core.csproj src/AudioCentral.Core/
 COPY src/AudioCentral.ServiceDefaults/AudioCentral.ServiceDefaults.csproj src/AudioCentral.ServiceDefaults/
 COPY src/AudioCentral.Providers.TuneIn/AudioCentral.Providers.TuneIn.csproj src/AudioCentral.Providers.TuneIn/
+COPY src/AudioCentral.Providers.Spotify/AudioCentral.Providers.Spotify.csproj src/AudioCentral.Providers.Spotify/
 COPY src/AudioCentral.Players.GoogleCast/AudioCentral.Players.GoogleCast.csproj src/AudioCentral.Players.GoogleCast/
 COPY src/AudioCentral.Players.Remote/AudioCentral.Players.Remote.csproj src/AudioCentral.Players.Remote/
 COPY src/AudioCentral.Web/AudioCentral.Web.csproj src/AudioCentral.Web/
@@ -20,14 +21,25 @@ RUN dotnet restore src/AudioCentral.Server/AudioCentral.Server.csproj -a $TARGET
 COPY src/ src/
 RUN dotnet publish src/AudioCentral.Server/AudioCentral.Server.csproj -c Release -a $TARGETARCH --no-restore -o /app
 
+# go-librespot decodes Spotify; one daemon runs per linked account.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS librespot
+ARG TARGETARCH
+ARG LIBRESPOT_VERSION=v0.10.5
+RUN case "$TARGETARCH" in amd64) arch=x86_64 ;; arm64) arch=arm64 ;; *) echo "Unsupported architecture $TARGETARCH" >&2; exit 1 ;; esac \
+    && mkdir /librespot \
+    && curl -fsSL "https://github.com/devgianlu/go-librespot/releases/download/${LIBRESPOT_VERSION}/go-librespot_linux_${arch}.tar.gz" \
+       | tar -xz -C /librespot
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
-# ffmpeg is used for transcoding (Spotify, local files); radio relays without it.
+# ffmpeg encodes Spotify audio (and later local files); go-librespot only links libasound dynamically.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg libasound2t64 \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir /data \
     && chown app:app /data
+
+COPY --from=librespot /librespot/go-librespot /usr/local/bin/go-librespot
 
 WORKDIR /app
 COPY --from=build /app .

@@ -1,0 +1,33 @@
+@inject DialogService Dialogs
+@inject IStringLocalizer<Strings> L
+
+@* Shown when every Spotify account streams; closes with the id of the player to stop, or null. *@
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.Body1">@L["SpotifyBusyText"]</RadzenText>
+    @foreach (var holder in Holders)
+    {
+        <RadzenStack @key="holder.PlayerId" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenIcon Icon="speaker" />
+            <RadzenStack Gap="0" Style="flex: 1;">
+                <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0">@holder.PlayerName</RadzenText>
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">@holder.AccountName</RadzenText>
+            </RadzenStack>
+            @if (holder.CanTakeOver)
+            {
+                <RadzenButton Text="@L["SpotifyTakeOver"]" ButtonStyle="ButtonStyle.Warning" Click="@(() => Dialogs.Close(holder.PlayerId))" />
+            }
+        </RadzenStack>
+    }
+    @if (!Holders.Any(h => h.CanTakeOver))
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" AllowClose="false" Shade="Shade.Lighter">@L["SpotifyBusyNone"]</RadzenAlert>
+    }
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+        <RadzenButton Text="@L["Cancel"]" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="@(() => Dialogs.Close(null))" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<SpotifyAccountHolderDto> Holders { get; set; } = [];
+}

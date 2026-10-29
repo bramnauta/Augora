@@ -99,4 +99,23 @@
   <data name="AutoplayBlocked" xml:space="preserve"><value>The browser blocks automatic playback. Click to allow sound.</value></data>
   <data name="AllowPlayback" xml:space="preserve"><value>Allow playback</value></data>
   <data name="ForgetPlayer" xml:space="preserve"><value>Forget player</value></data>
+  <data name="Nav_Spotify" xml:space="preserve"><value>Spotify</value></data>
+  <data name="SpotifyAccounts" xml:space="preserve"><value>Spotify accounts</value></data>
+  <data name="SpotifyHelp" xml:space="preserve"><value>Link a Spotify Premium account. Spotify allows one stream per account: when playing, AudioCentral picks your own account first, then a shared account, then a free account of someone else.</value></data>
+  <data name="SpotifyLink" xml:space="preserve"><value>Link account</value></data>
+  <data name="SpotifyShared" xml:space="preserve"><value>Shared account (equal for everyone)</value></data>
+  <data name="SpotifyClientId" xml:space="preserve"><value>Own client id (optional)</value></data>
+  <data name="SpotifyRedirectHelp" xml:space="preserve"><value>Register this redirect URI in your app on developer.spotify.com:</value></data>
+  <data name="SpotifyNoClientId" xml:space="preserve"><value>No default client id is configured (Providers__Spotify__ClientId). Enter your own client id below.</value></data>
+  <data name="SpotifyNoAccounts" xml:space="preserve"><value>No Spotify accounts linked yet.</value></data>
+  <data name="SpotifyLinked" xml:space="preserve"><value>Spotify account linked</value></data>
+  <data name="SpotifyDisabled" xml:space="preserve"><value>Spotify is disabled on this server.</value></data>
+  <data name="SpotifyStreamingOn" xml:space="preserve"><value>Playing on {0}</value></data>
+  <data name="SpotifyOwner" xml:space="preserve"><value>Owned by {0}</value></data>
+  <data name="SpotifySharedLabel" xml:space="preserve"><value>Shared</value></data>
+  <data name="SpotifyBusyTitle" xml:space="preserve"><value>All Spotify accounts are in use</value></data>
+  <data name="SpotifyBusyText" xml:space="preserve"><value>Spotify allows one stream per account. Stop one of these streams to take over its account:</value></data>
+  <data name="SpotifyBusyNone" xml:space="preserve"><value>None of these streams uses your account or a shared account. Ask the owner or link an account of your own.</value></data>
+  <data name="SpotifyTakeOver" xml:space="preserve"><value>Stop and take over</value></data>
+  <data name="ConfirmRemoveSpotify" xml:space="preserve"><value>Unlink Spotify account {0}?</value></data>
 </root>

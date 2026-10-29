@@ -12,12 +12,12 @@ Home Assistant).
 | Runtime | .NET 10 LTS, Aspire 13.x voor development |
 | Frontend | Blazor WebAssembly + Radzen.Blazor, gehost door de server (same-origin) |
 | Database | SQLite via EF Core |
-| Deployment | Eén Docker-image (+ librespot-sidecar zodra Spotify er is), als Home Assistant-app of losse container, `network_mode: host` aanbevolen |
+| Deployment | Eén Docker-image (inclusief ffmpeg en go-librespot), als Home Assistant-app of losse container, `network_mode: host` aanbevolen |
 | Externe toegang | Achter reverse proxy; forwarded headers + instelbare `PublicBaseUrl` |
 | Authenticatie | Lokale accounts (ASP.NET Core Identity, cookie voor de UI, tokens voor API-clients); OIDC optioneel |
 | Home Assistant | Eigen API (REST + SignalR); HA-integratie later |
 | Talen | Code Engels, UI Nederlands (standaard) + Engels |
-| Spotify-audio | librespot-sidecar (later), account-pool |
+| Spotify-audio | go-librespot-proces per account in dezelfde container (geen sidecar: de FIFO moet lokaal zijn), account-pool |
 | Nextory | Laatste fase, na haalbaarheidsonderzoek |
 
 ## Solution-indeling
@@ -29,6 +29,8 @@ src/
   AudioCentral.Contracts          DTO's + API-contract; gedeeld met Web, later Android/HA
   AudioCentral.Core               Domeinmodel, abstracties, PlayerManager, QueueManager, streaming
   AudioCentral.Providers.TuneIn   Muziekbron: TuneIn (OPML-API)
+  AudioCentral.Providers.Spotify  Muziekbron: Spotify (Web API + go-librespot, account-pool)
+  AudioCentral.Players.Remote     Spelers die zich via de hub aanmelden (browser, Android)
   AudioCentral.Players.GoogleCast Spelerbron: Google Cast (mDNS + Cast v2-protocol)
   AudioCentral.Server             ASP.NET Core host: REST-API, SignalR-hub, stream-endpoints,
                                   persistence, auth, host van de WASM-app
@@ -49,12 +51,15 @@ Een bron levert *browse*, *search* en *stream resolution*:
 - `BrowseAsync(path)` – hiërarchisch bladeren (TuneIn-categorieën, Spotify-playlists, mappen).
 - `SearchAsync(query, types)` – zoeken; de server voegt de resultaten van alle bronnen samen.
 - `GetItemAsync(id)` – metadata van één item.
-- `ResolveStreamAsync(item, context)` – levert een `StreamSource`: een upstream-URL
-  (radio, podcast), een lokaal bestand, of een *producer* die audio schrijft (librespot).
+- `GetQueueItemsAsync(item)` – wat in de wachtrij komt: het item zelf, of de nummers van een album/playlist.
+- `ResolveStreamAsync(item, PlaybackContext)` – levert een `StreamSource`: `HttpStreamSource`
+  (radio, podcast; wordt uitgepakt tot `ResolvedStream`), `FileStreamSource` (lokaal bestand, met
+  range-support) of `ProducedStreamSource` (audio die de server zelf maakt, zoals librespot + ffmpeg).
+  `PlaybackContext` bevat speler, gebruiker en eventueel de over te nemen speler.
 
 Items worden geïdentificeerd met een `MediaItemRef` = `{provider}:{type}:{id}`, bijvoorbeeld
-`tunein:radio:s24939`. Een provider kan meerdere *instances* hebben (bijv. elk Spotify-account is
-een instance van de Spotify-provider); de ref bevat dan de instance-id.
+`tunein:radio:s24939` of `spotify:track:4uLU6hMCjMI75M1A2tKUQC`. Spotify-items zijn
+account-onafhankelijk; alleen mappen bevatten het account (`spotify:folder:{account}/playlists`).
 
 ### Player providers (`IPlayerProvider`) en spelers (`IPlayer`)
 Een spelerbron ontdekt spelers (mDNS, handmatige configuratie, of spelers die zich via de hub
@@ -97,18 +102,39 @@ speler ──HTTP GET──▶ /api/stream/{sessionId}  ──▶ StreamSession 
 - Daarnaast kun je in de UI apparaten handmatig toevoegen (host + poort, ook groepen met hun
   eigen poort); die worden in SQLite bewaard en periodiek gecontroleerd.
 
-## Spotify (fase 3)
+## Spotify
 
-- Per gekoppeld account draait een librespot-instance (sidecar-container, één proces per account)
-  die audio naar AudioCentral pipet; wij transcoderen en streamen naar de speler.
-- De **account-pool**: een Spotify-account kan maar één stream tegelijk hebben.
-  - Afspelen gekozen door een gebruiker: eerst het eigen account; is dat bezet, dan een vrij
-    gedeeld account; is er niets vrij, dan vraagt de UI of de eigen lopende stream gestopt moet
-    worden.
-  - Afspelen via de API (Home Assistant): vrij account uit de pool, anders `409 Conflict`
-    met een duidelijke foutcode (`spotify_no_free_account`).
-- Client-id: centraal instelbaar, per account te overschrijven.
-- Accounts hebben Spotify Premium nodig.
+```
+Web API (metadata) ◀── SpotifyProvider ──▶ SpotifyAccountPool (account ↔ speler)
+                              │
+                              ▼  ProducedStreamSource
+ speler ─GET /api/stream─▶ LibrespotManager ─POST /player/play─▶ go-librespot (1 proces per account)
+             ▲                    │                                     │ PCM s16le 44,1 kHz
+             └── MP3 320k ◀── ffmpeg ◀──────── PcmPipe ◀── FIFO ◀──────┘
+```
+
+- **Koppelen**: OAuth authorization code + PKCE tegen de Spotify-app (client-id centraal in
+  `Providers:Spotify:ClientId`, per account te overschrijven). Het refresh-token staat versleuteld
+  (data protection) in SQLite; Spotify roteert het bij elke refresh. Het account-id is de
+  Spotify-user-id, dus opnieuw koppelen werkt het bestaande account bij.
+- **Metadata** via de Web API. Sinds februari 2026: zoeken max. 10 resultaten per type, playlist-inhoud
+  via `/playlists/{id}/items` en alleen voor eigen/collaboratieve playlists, geen top tracks per artiest
+  (een artiest toont zijn albums). Albums, playlists en "Liked Songs" zijn afspeelbaar: de wachtrij krijgt
+  hun nummers (`IMusicProvider.GetQueueItemsAsync`).
+- **Audio**: go-librespot (`--config_dir {DataDirectory}/spotify/{account}`) logt in met het access-token
+  (`credentials.type: spotify_token`, scope `streaming`) en schrijft PCM naar een FIFO. Per nummer start
+  AudioCentral bij het HTTP-verzoek van de speler `POST /player/play`, leest de FIFO tot het
+  `not_playing`/`stopped`-event plus een korte stilte (of tot de verwachte lengte binnen is) en sluit dan de
+  HTTP-stream, zodat de speler "klaar" meldt en de wachtrij doorgaat. De kanaalbuffer (±6 s) remt librespot af.
+- **Account-pool** (één stream per account):
+  - Een speler houdt zijn account zolang hij streamt en `AccountHoldTime` (2 min) daarna, zodat het volgende
+    nummer hetzelfde account krijgt.
+  - Keuze: eigen account van de gebruiker → gedeeld account → vrij account van een ander. Wie het
+    afspelen startte wordt per speler onthouden voor het automatisch doorgaan van de wachtrij.
+  - Niets vrij → `409 spotify_no_free_account` met `holders` (account, speler, `canTakeOver`). De UI toont
+    een dialoog; met `takeoverPlayerId` wordt die speler gestopt en neemt de nieuwe speler het account over.
+    Overnemen mag alleen bij je eigen of een gedeeld account. Home Assistant krijgt dezelfde 409.
+- Accounts hebben Spotify Premium nodig; een app in development mode staat vijf gebruikers toe.
 
 ## API
 
@@ -169,7 +195,7 @@ niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
 
 1. ✅ **Basis** – solution, Aspire, Docker, core-abstracties, TuneIn → Google Cast, Blazor UI.
 2. ✅ **Auth + browser-speler** – Identity, tokens, browser als speler via de hub.
-3. **Spotify** – librespot-sidecar, meerdere accounts, account-pool.
+3. ✅ **Spotify** – go-librespot per account, meerdere accounts, account-pool.
 4. **Lokale bestanden + podcasts**.
 5. **Android-app** en **Home Assistant-integratie**.
 6. **Eigen sync-groepen**.

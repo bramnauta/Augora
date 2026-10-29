@@ -80,7 +80,10 @@ public enum RepeatMode
     All,
 }
 
-public sealed record PlayRequest(string Uri, QueueOption Option = QueueOption.Replace);
+/// <param name="TakeoverPlayerId">
+/// When no Spotify account is free (<c>spotify_no_free_account</c>): stop this player and use its account.
+/// </param>
+public sealed record PlayRequest(string Uri, QueueOption Option = QueueOption.Replace, string? TakeoverPlayerId = null);
 
 public sealed record VolumeRequest(double Level);
 

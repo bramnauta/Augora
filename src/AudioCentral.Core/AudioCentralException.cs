@@ -9,4 +9,7 @@ public class AudioCentralException(string code, string message, int statusCode =
     public string Code { get; } = code;
 
     public int StatusCode { get; } = statusCode;
+
+    /// <summary>Extra Problem Details members, e.g. the players holding a Spotify account.</summary>
+    public IDictionary<string, object?> Extensions { get; } = new Dictionary<string, object?>();
 }

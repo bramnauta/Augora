@@ -201,7 +201,7 @@ internal static class AuthEndpoints
             title: string.Join(" ", result.Errors.Select(e => e.Description)),
             extensions: new Dictionary<string, object?> { ["code"] = ErrorCodes.IdentityError });
 
-    private static string LocalUrl(string? url) =>
+    internal static string LocalUrl(string? url) =>
         !string.IsNullOrEmpty(url) && url.StartsWith('/') && !url.StartsWith("//", StringComparison.Ordinal) && !url.StartsWith("/\\", StringComparison.Ordinal)
             ? url
             : "/";

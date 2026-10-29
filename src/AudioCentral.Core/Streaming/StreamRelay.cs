@@ -4,16 +4,45 @@ using Microsoft.Extensions.Logging;
 namespace AudioCentral.Core.Streaming;
 
 /// <summary>
-/// Serves a stream session to a player by relaying the upstream audio unchanged.
-/// Transcoding (ffmpeg) will plug in here for sources that need it.
+/// Serves a stream session to a player: relays upstream HTTP audio unchanged, serves files with range support
+/// and runs producers (librespot + ffmpeg).
 /// </summary>
 public sealed class StreamRelay(IHttpClientFactory httpClientFactory, ILogger<StreamRelay> logger)
 {
     private const int BufferSize = 64 * 1024;
 
-    public async Task ServeAsync(StreamSession session, HttpContext context)
+    public Task ServeAsync(StreamSession session, HttpContext context) => session.Stream switch
     {
-        var stream = session.Stream;
+        ResolvedStream resolved => RelayAsync(session, resolved, context),
+        FileStreamSource file => Results.File(file.Path, file.ContentType, enableRangeProcessing: true).ExecuteAsync(context),
+        ProducedStreamSource produced => ProduceAsync(session, produced, context),
+        var other => throw new NotSupportedException($"Stream source {other.GetType().Name} cannot be served."),
+    };
+
+    private async Task ProduceAsync(StreamSession session, ProducedStreamSource produced, HttpContext context)
+    {
+        var response = context.Response;
+        response.ContentType = produced.ContentType;
+        response.Headers.CacheControl = "no-cache, no-store";
+        // Cast devices probe with HEAD; that must not start playback in the producer.
+        if (HttpMethods.IsHead(context.Request.Method))
+        {
+            return;
+        }
+
+        logger.LogInformation("Producing {ContentType} stream for player {Player}", produced.ContentType, session.PlayerId);
+        try
+        {
+            await produced.WriteAsync(response.Body, context.RequestAborted);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException && context.RequestAborted.IsCancellationRequested)
+        {
+            logger.LogDebug("Player {Player} closed the produced stream", session.PlayerId);
+        }
+    }
+
+    private async Task RelayAsync(StreamSession session, ResolvedStream stream, HttpContext context)
+    {
         var cancellationToken = context.RequestAborted;
 
         using var request = new HttpRequestMessage(HttpMethod.Get, stream.Url);

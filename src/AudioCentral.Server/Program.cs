@@ -1,10 +1,12 @@
 using AudioCentral.Contracts;
 using AudioCentral.Core;
 using AudioCentral.Core.Events;
+using AudioCentral.Core.Providers;
 using AudioCentral.Core.Queue;
 using AudioCentral.Core.Streaming;
 using AudioCentral.Players.GoogleCast;
 using AudioCentral.Players.Remote;
+using AudioCentral.Providers.Spotify;
 using AudioCentral.Providers.TuneIn;
 using AudioCentral.Server;
 using AudioCentral.Server.Auth;
@@ -32,8 +34,13 @@ builder.AddAudioCentralAuth(dataDirectory);
 builder.Services
     .AddAudioCentralCore(builder.Configuration)
     .AddTuneIn(builder.Configuration)
+    .AddSpotify(builder.Configuration)
     .AddGoogleCast(builder.Configuration)
     .AddRemotePlayers();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<ICurrentUser, HttpContextCurrentUser>();
+builder.Services.AddSingleton<ISpotifyAccountStore, EfSpotifyAccountStore>();
 
 builder.Services.AddSingleton<IStreamUrlProvider, StreamUrlProvider>();
 builder.Services.AddSingleton<IEventPublisher, SignalREventPublisher>();
@@ -86,6 +93,15 @@ app.MapUserEndpoints();
 app.MapLibraryEndpoints();
 app.MapPlayerEndpoints();
 app.MapGoogleCastEndpoints();
+if (app.Services.GetService<SpotifyProvider>() is not null)
+{
+    app.MapSpotifyEndpoints();
+}
+else
+{
+    app.MapGet("/api/spotify", () => new SpotifyStatusDto(false, false, "", [])).WithTags("Spotify");
+}
+
 app.MapStreamEndpoints();
 app.MapHub<AudioCentralHub>(EventsHub.Path);
 

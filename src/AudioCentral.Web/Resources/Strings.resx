@@ -99,4 +99,23 @@
   <data name="AutoplayBlocked" xml:space="preserve"><value>De browser blokkeert automatisch afspelen. Klik om geluid toe te staan.</value></data>
   <data name="AllowPlayback" xml:space="preserve"><value>Afspelen toestaan</value></data>
   <data name="ForgetPlayer" xml:space="preserve"><value>Speler vergeten</value></data>
+  <data name="Nav_Spotify" xml:space="preserve"><value>Spotify</value></data>
+  <data name="SpotifyAccounts" xml:space="preserve"><value>Spotify-accounts</value></data>
+  <data name="SpotifyHelp" xml:space="preserve"><value>Koppel een Spotify Premium-account. Spotify staat één stream per account toe: bij het afspelen kiest AudioCentral eerst je eigen account, dan een gedeeld account, dan een vrij account van een ander.</value></data>
+  <data name="SpotifyLink" xml:space="preserve"><value>Account koppelen</value></data>
+  <data name="SpotifyShared" xml:space="preserve"><value>Gedeeld account (voor iedereen gelijk)</value></data>
+  <data name="SpotifyClientId" xml:space="preserve"><value>Eigen client-id (optioneel)</value></data>
+  <data name="SpotifyRedirectHelp" xml:space="preserve"><value>Registreer deze redirect-URI in je app op developer.spotify.com:</value></data>
+  <data name="SpotifyNoClientId" xml:space="preserve"><value>Er is geen standaard client-id ingesteld (Providers__Spotify__ClientId). Vul hieronder een eigen client-id in.</value></data>
+  <data name="SpotifyNoAccounts" xml:space="preserve"><value>Nog geen Spotify-accounts gekoppeld.</value></data>
+  <data name="SpotifyLinked" xml:space="preserve"><value>Spotify-account gekoppeld</value></data>
+  <data name="SpotifyDisabled" xml:space="preserve"><value>Spotify is uitgeschakeld op deze server.</value></data>
+  <data name="SpotifyStreamingOn" xml:space="preserve"><value>Speelt op {0}</value></data>
+  <data name="SpotifyOwner" xml:space="preserve"><value>Van {0}</value></data>
+  <data name="SpotifySharedLabel" xml:space="preserve"><value>Gedeeld</value></data>
+  <data name="SpotifyBusyTitle" xml:space="preserve"><value>Alle Spotify-accounts zijn in gebruik</value></data>
+  <data name="SpotifyBusyText" xml:space="preserve"><value>Spotify staat één stream per account toe. Stop een van deze streams om het account over te nemen:</value></data>
+  <data name="SpotifyBusyNone" xml:space="preserve"><value>Geen van deze streams gebruikt jouw account of een gedeeld account. Vraag de eigenaar of koppel een eigen account.</value></data>
+  <data name="SpotifyTakeOver" xml:space="preserve"><value>Stoppen en overnemen</value></data>
+  <data name="ConfirmRemoveSpotify" xml:space="preserve"><value>Spotify-account {0} ontkoppelen?</value></data>
 </root>

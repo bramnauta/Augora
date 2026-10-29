@@ -56,6 +56,9 @@ public sealed class LibraryService(IEnumerable<IMusicProvider> providers, ILogge
         return new SearchResultDto(query, await Task.WhenAll(tasks));
     }
 
+    public Task<IReadOnlyList<MediaItem>> GetQueueItemsAsync(MediaItem item, CancellationToken cancellationToken) =>
+        GetProvider(item.Ref.Provider).GetQueueItemsAsync(item, cancellationToken);
+
     public async Task<MediaItem> GetItemAsync(MediaItemRef item, CancellationToken cancellationToken) =>
         await GetProvider(item.Provider).GetItemAsync(item, cancellationToken)
         ?? throw new AudioCentralException(ErrorCodes.ItemNotFound, $"Item '{item}' does not exist.", 404);

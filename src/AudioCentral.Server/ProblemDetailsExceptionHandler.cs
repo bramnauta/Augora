@@ -17,7 +17,7 @@ internal sealed class ProblemDetailsExceptionHandler(IProblemDetailsService prob
 
         logger.LogInformation("Request {Path} failed: {Code} {Message}", httpContext.Request.Path, error.Code, error.Message);
         httpContext.Response.StatusCode = error.StatusCode;
-        return await problemDetails.TryWriteAsync(new ProblemDetailsContext
+        var context = new ProblemDetailsContext
         {
             HttpContext = httpContext,
             Exception = exception,
@@ -27,6 +27,12 @@ internal sealed class ProblemDetailsExceptionHandler(IProblemDetailsService prob
                 Title = error.Message,
                 Extensions = { ["code"] = error.Code },
             },
-        });
+        };
+        foreach (var (key, value) in error.Extensions)
+        {
+            context.ProblemDetails.Extensions[key] = value;
+        }
+
+        return await problemDetails.TryWriteAsync(context);
     }
 }

@@ -12,6 +12,8 @@ public sealed class AudioCentralDbContext(DbContextOptions<AudioCentralDbContext
 
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
 
+    public DbSet<StoredSpotifyAccount> SpotifyAccounts => Set<StoredSpotifyAccount>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -38,7 +40,33 @@ public sealed class AudioCentralDbContext(DbContextOptions<AudioCentralDbContext
             e.HasIndex(t => t.SecretHash).IsUnique();
             e.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        builder.Entity<StoredSpotifyAccount>(e =>
+        {
+            e.Property(a => a.Id).HasMaxLength(200);
+            e.Property(a => a.DisplayName).HasMaxLength(200);
+            e.Property(a => a.ClientId).HasMaxLength(100);
+            // A user's own accounts become shared when the user is deleted.
+            e.HasOne<AppUser>().WithMany().HasForeignKey(a => a.OwnerUserId).OnDelete(DeleteBehavior.SetNull);
+        });
     }
+}
+
+/// <summary>A linked Spotify account. The refresh token is encrypted with ASP.NET Core data protection.</summary>
+public sealed class StoredSpotifyAccount
+{
+    /// <summary>The Spotify user id.</summary>
+    public required string Id { get; set; }
+
+    public required string DisplayName { get; set; }
+
+    public string? OwnerUserId { get; set; }
+
+    public string? ClientId { get; set; }
+
+    public required string ProtectedRefreshToken { get; set; }
+
+    public DateTimeOffset LinkedAt { get; set; }
 }
 
 public sealed class AppUser : IdentityUser

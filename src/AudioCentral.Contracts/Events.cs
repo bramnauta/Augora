@@ -34,4 +34,10 @@ public static class ErrorCodes
     public const string InvalidCredentials = "invalid_credentials";
     public const string LockedOut = "locked_out";
     public const string IdentityError = "identity_error";
+
+    /// <summary>All Spotify accounts are streaming; the <c>holders</c> extension lists <see cref="SpotifyAccountHolderDto"/>s.</summary>
+    public const string SpotifyNoFreeAccount = "spotify_no_free_account";
+    public const string SpotifyNotConfigured = "spotify_not_configured";
+    public const string SpotifyAuthFailed = "spotify_auth_failed";
+    public const string Forbidden = "forbidden";
 }

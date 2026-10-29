@@ -4,6 +4,7 @@ using AudioCentral.Core.Queue;
 using AudioCentral.Core.Streaming;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AudioCentral.Core;
 
@@ -14,6 +15,7 @@ public static class ServiceCollectionExtensions
         services.Configure<AudioCentralOptions>(configuration.GetSection(AudioCentralOptions.SectionName));
         services.AddSingleton(TimeProvider.System);
 
+        services.TryAddSingleton<ICurrentUser, NoCurrentUser>();
         services.AddSingleton<LibraryService>();
         services.AddSingleton<PlayerManager>();
         services.AddHostedService(sp => sp.GetRequiredService<PlayerManager>());

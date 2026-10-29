@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\AudioCentral.Players.GoogleCast\AudioCentral.Players.GoogleCast.csproj" />
     <ProjectReference Include="..\..\src\AudioCentral.Players.Remote\AudioCentral.Players.Remote.csproj" />
     <ProjectReference Include="..\..\src\AudioCentral.Server\AudioCentral.Server.csproj" />
+    <ProjectReference Include="..\..\src\AudioCentral.Providers.Spotify\AudioCentral.Providers.Spotify.csproj" />
   </ItemGroup>
 
 </Project>

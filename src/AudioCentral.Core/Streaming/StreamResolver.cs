@@ -4,14 +4,6 @@ using Microsoft.Extensions.Logging;
 namespace AudioCentral.Core.Streaming;
 
 /// <summary>
-/// The final audio location after unwrapping playlists and redirects.
-/// </summary>
-/// <param name="Direct">
-/// The player must fetch <paramref name="Url"/> itself instead of going through the relay (HLS).
-/// </param>
-public sealed record ResolvedStream(Uri Url, string ContentType, bool IsLive, bool Direct);
-
-/// <summary>
 /// Follows playlists (PLS/M3U/ASX) until it reaches actual audio, and determines the content type.
 /// </summary>
 public sealed class StreamResolver(HttpClient httpClient, ILogger<StreamResolver> logger)

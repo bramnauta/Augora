@@ -168,6 +168,38 @@ namespace AudioCentral.Server.Data.Migrations
                     b.ToTable("Queues");
                 });
 
+            modelBuilder.Entity("AudioCentral.Server.Data.StoredSpotifyAccount", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ClientId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("LinkedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedRefreshToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.ToTable("SpotifyAccounts");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -305,6 +337,14 @@ namespace AudioCentral.Server.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AudioCentral.Server.Data.StoredSpotifyAccount", b =>
+                {
+                    b.HasOne("AudioCentral.Server.Data.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

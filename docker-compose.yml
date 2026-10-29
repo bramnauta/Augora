@@ -1,30 +1,50 @@
-# Example deployment on a Linux host.
+# Example deployment on a Linux host, without host networking.
 #
-# Host networking lets mDNS discovery find Google Cast devices and gives players a stable
-# address for the stream endpoint. If the speakers live in another VLAN, either reflect mDNS
-# between the VLANs (Avahi / router) or add them under Settings, and make sure the speakers
-# can reach this host on port 4727.
+# The container gets its own address in your LAN through macvlan, so mDNS discovery finds the
+# Google Cast devices and speakers can reach the stream endpoint directly on port 4727. Set the
+# values in a .env file next to this one (see .env.example).
+#
+# macvlan isolates the container from the host itself: a reverse proxy on the same host reaches
+# AudioCentral through the "proxy" bridge network below instead (attach your proxy container to it).
 services:
   audiocentral:
     build: .
     image: audiocentral:latest
     container_name: audiocentral
-    network_mode: host
     restart: unless-stopped
+    networks:
+      lan:
+        ipv4_address: ${AUDIOCENTRAL_IP}
+      proxy: {}
     volumes:
       - audiocentral-data:/data
       # Music library, e.g. a NAS share mounted on the host. Read-only is enough.
-      - /mnt/nas/music:/music:ro
+      - ${MUSIC_PATH:-/mnt/nas/music}:/music:ro
     environment:
       TZ: Europe/Amsterdam
-      # Address under which the speakers reach this host; leave empty to auto-detect the LAN IP.
-      AudioCentral__StreamBaseUrl: ""
+      # With two networks the LAN address cannot be detected reliably: always the macvlan address.
+      AudioCentral__StreamBaseUrl: http://${AUDIOCENTRAL_IP}:4727
       # Public url when running behind a reverse proxy.
-      AudioCentral__PublicBaseUrl: ""
+      AudioCentral__PublicBaseUrl: ${PUBLIC_URL:-}
       Providers__LocalFiles__Folders__0__Name: Muziek
       Providers__LocalFiles__Folders__0__Path: /music
       # Client id of your app on developer.spotify.com (accounts can also bring their own).
-      Providers__Spotify__ClientId: ""
+      Providers__Spotify__ClientId: ${SPOTIFY_CLIENT_ID:-}
+
+networks:
+  lan:
+    driver: macvlan
+    driver_opts:
+      # The host's network interface on the LAN, e.g. eth0, or eth0.20 for a VLAN.
+      parent: ${LAN_PARENT:-eth0}
+    ipam:
+      config:
+        - subnet: ${LAN_SUBNET}
+          gateway: ${LAN_GATEWAY}
+          # Keep this range out of your DHCP pool.
+          ip_range: ${LAN_IP_RANGE:-${AUDIOCENTRAL_IP}/32}
+  proxy:
+    driver: bridge
 
 volumes:
   audiocentral-data:

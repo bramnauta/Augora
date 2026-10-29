@@ -31,7 +31,19 @@ internal sealed class StreamUrlProvider(IOptions<AudioCentralOptions> options, I
         var port = options.StreamPort ?? GetHttpPort(server);
         var address = GetLanAddress();
         var url = new Uri($"http://{address}:{port}/");
-        logger.LogInformation("Players will stream from {Url}. Set AudioCentral:StreamBaseUrl to override", url);
+        if (IsDockerBridgeAddress(address))
+        {
+            // In a bridge network the container only sees its private address; speakers cannot reach it.
+            logger.LogWarning(
+                "Players will stream from {Url}, a Docker bridge address that speakers usually cannot reach. "
+                + "Set AudioCentral:StreamBaseUrl to the host's LAN address, or use a macvlan network",
+                url);
+        }
+        else
+        {
+            logger.LogInformation("Players will stream from {Url}. Set AudioCentral:StreamBaseUrl to override", url);
+        }
+
         return url;
     }
 
@@ -49,6 +61,14 @@ internal sealed class StreamUrlProvider(IOptions<AudioCentralOptions> options, I
         }
 
         return 4727;
+    }
+
+    /// <summary>Running in a container on an address in 172.16.0.0/12, Docker's default bridge range.</summary>
+    internal static bool IsDockerBridgeAddress(IPAddress address)
+    {
+        var bytes = address.GetAddressBytes();
+        return Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true"
+            && bytes.Length == 4 && bytes[0] == 172 && bytes[1] is >= 16 and <= 31;
     }
 
     /// <summary>The IPv4 address of the interface that has the default gateway.</summary>

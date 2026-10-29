@@ -107,11 +107,25 @@ dotnet dotnet-ef migrations add <Naam> --project src/AudioCentral.Server --outpu
 
 ## Draaien in Docker
 
+Het compose-voorbeeld gebruikt een **macvlan**-netwerk: de container krijgt een eigen IP in je LAN,
+zodat mDNS de Cast-speakers vindt en de speakers de stream rechtstreeks ophalen, zonder
+`network_mode: host`. Kopieer `.env.example` naar `.env` en vul interface, subnet, gateway en een
+vrij IP buiten de DHCP-pool in. Daarna:
+
 ```bash
 docker compose up -d --build
 ```
 
-De UI staat op `http://<host>:4727`. Gebruik `network_mode: host` (Linux) zodat mDNS werkt.
+De UI staat dan op `http://<AUDIOCENTRAL_IP>:4727`.
+
+- **Reverse proxy op dezelfde host:** macvlan sluit de host zelf af van de container. Hang je
+  proxy-container daarom aan het `proxy`-netwerk uit de compose en proxy naar `http://audiocentral:4727`.
+- **Speakers in een ander VLAN:** gebruik als `LAN_PARENT` de VLAN-interface van dat netwerk
+  (bijv. `eth0.20`), of laat de router mDNS reflecteren en verkeer naar `AUDIOCENTRAL_IP:4727` toe.
+- **Liever een gewoon bridge-netwerk:** publiceer poort 4727, zet `AudioCentral__StreamBaseUrl` op
+  het LAN-adres van de host en voeg de speakers handmatig toe onder Instellingen (mDNS werkt dan niet).
+  Zonder `StreamBaseUrl` waarschuwt de log dat spelers een Docker-adres krijgen. Docker Desktop
+  (Windows/macOS) ondersteunt macvlan niet goed; gebruik daar deze bridge-opzet.
 
 Belangrijke instellingen (omgevingsvariabelen):
 

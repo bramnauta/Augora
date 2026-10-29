@@ -12,7 +12,7 @@ Home Assistant).
 | Runtime | .NET 10 LTS, Aspire 13.x voor development |
 | Frontend | Blazor WebAssembly + Radzen.Blazor, gehost door de server (same-origin) |
 | Database | SQLite via EF Core |
-| Deployment | Eén Docker-image (inclusief ffmpeg en go-librespot), als Home Assistant-app of losse container, `network_mode: host` aanbevolen |
+| Deployment | Eén Docker-image (inclusief ffmpeg en go-librespot), als Home Assistant-app of losse container; netwerk via macvlan (eigen LAN-IP, mDNS werkt), geen host-modus |
 | Externe toegang | Achter reverse proxy; forwarded headers + instelbare `PublicBaseUrl` |
 | Authenticatie | Lokale accounts (ASP.NET Core Identity, cookie voor de UI, tokens voor API-clients); OIDC optioneel |
 | Home Assistant | Eigen API (REST + SignalR); HA-integratie later |
@@ -256,7 +256,11 @@ niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
 
 - `Dockerfile` bouwt één image (multi-arch amd64/arm64) met ffmpeg.
 - Data in `/data` (SQLite, cache, config).
-- Home Assistant-app: later een `config.yaml` met `host_network: true` en ingress.
+- `docker-compose.yml`: macvlan-netwerk (`lan`) voor discovery en streams, plus een bridge-netwerk
+  (`proxy`) voor een reverse proxy op dezelfde host. Met twee netwerken is `StreamBaseUrl` vast op het
+  macvlan-adres gezet. In een bridge-netwerk zonder `StreamBaseUrl` logt de server een waarschuwing.
+- Home Assistant-app: later, als één container met `host_network: true` in `config.yaml`: mDNS en het stream-adres werken dan zonder macvlan. go-librespot zit altijd in dezelfde
+  container als AudioCentral; de audio loopt via een FIFO, dus een losse librespot-container kan niet.
 
 ## Roadmap
 

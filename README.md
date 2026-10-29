@@ -18,7 +18,7 @@ op Android. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp en roa
 - ✅ Android-app (telefoon en TV): de UI plus een native speler die op de achtergrond doorspeelt
 - ✅ Home Assistant-integratie: media players, mediabrowser, realtime updates
 - ✅ Eigen groepen: spelers van elk type samen laten spelen (losjes synchroon, één bron en één Spotify-account per groep)
-- ⏳ Nextory
+- ❌ Nextory: onderzocht, nu niet betrouwbaar te bouwen; zie [docs/nextory-feasibility.md](docs/nextory-feasibility.md)
 
 Bij de eerste start vraagt de UI om het eerste account aan te maken; dat wordt beheerder.
 

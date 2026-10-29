@@ -18,7 +18,7 @@ Home Assistant).
 | Home Assistant | Eigen API (REST + SignalR); HA-integratie later |
 | Talen | Code Engels, UI Nederlands (standaard) + Engels |
 | Spotify-audio | go-librespot-proces per account in dezelfde container (geen sidecar: de FIFO moet lokaal zijn), account-pool |
-| Nextory | Laatste fase, na haalbaarheidsonderzoek |
+| Nextory | Onderzocht: nu niet te bouwen zonder officiële API ([nextory-feasibility.md](nextory-feasibility.md)) |
 
 ## Solution-indeling
 
@@ -266,4 +266,6 @@ niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
 4. ✅ **Lokale bestanden + podcasts**.
 5. ✅ **Android-app** en **Home Assistant-integratie**.
 6. ✅ **Eigen sync-groepen** (losjes synchroon, gedeelde bron).
-7. **Nextory** – haalbaarheidsonderzoek, daarna implementatie.
+7. ✅ **Nextory – haalbaarheidsonderzoek**: nu niet betrouwbaar te bouwen (geen publieke API, interne API
+   gewijzigd, DRM onbekend). Zie [nextory-feasibility.md](nextory-feasibility.md); implementatie pas na
+   officiële toegang of na vaststellen dat de audio niet DRM-beveiligd is.

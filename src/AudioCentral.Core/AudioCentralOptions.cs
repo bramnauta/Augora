@@ -4,8 +4,11 @@ public sealed class AudioCentralOptions
 {
     public const string SectionName = "AudioCentral";
 
-    /// <summary>Folder for the database and caches. <c>/data</c> in the container.</summary>
-    public string DataDirectory { get; set; } = "data";
+    /// <summary>
+    /// Folder for the database, login keys and caches. <c>/data</c> in the container. Not <c>data</c>:
+    /// on Windows that is the same folder as the server's <c>Data</c> source folder.
+    /// </summary>
+    public string DataDirectory { get; set; } = "App_Data";
 
     /// <summary>
     /// Base url under which players (Cast devices, ...) reach the stream endpoint, e.g.

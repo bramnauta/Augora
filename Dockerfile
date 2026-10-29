@@ -12,6 +12,7 @@ COPY src/AudioCentral.Core/AudioCentral.Core.csproj src/AudioCentral.Core/
 COPY src/AudioCentral.ServiceDefaults/AudioCentral.ServiceDefaults.csproj src/AudioCentral.ServiceDefaults/
 COPY src/AudioCentral.Providers.TuneIn/AudioCentral.Providers.TuneIn.csproj src/AudioCentral.Providers.TuneIn/
 COPY src/AudioCentral.Players.GoogleCast/AudioCentral.Players.GoogleCast.csproj src/AudioCentral.Players.GoogleCast/
+COPY src/AudioCentral.Players.Remote/AudioCentral.Players.Remote.csproj src/AudioCentral.Players.Remote/
 COPY src/AudioCentral.Web/AudioCentral.Web.csproj src/AudioCentral.Web/
 COPY src/AudioCentral.Server/AudioCentral.Server.csproj src/AudioCentral.Server/
 RUN dotnet restore src/AudioCentral.Server/AudioCentral.Server.csproj -a $TARGETARCH

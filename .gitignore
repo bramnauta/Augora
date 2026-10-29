@@ -483,3 +483,4 @@ $RECYCLE.BIN/
 
 # AudioCentral runtime data (SQLite database)
 **/audiocentral.db*
+**/App_Data/

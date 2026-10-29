@@ -1,0 +1,73 @@
+@page "/setup"
+@layout EmptyLayout
+@attribute [AllowAnonymous]
+@inject ApiClient Api
+@inject ServerAuthenticationStateProvider Auth
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@L["SetupTitle"]</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H6">@L["SetupTitle"]</RadzenText>
+<RadzenText TextStyle="TextStyle.Body2" class="rz-mb-4">@L["SetupIntro"]</RadzenText>
+
+@if (_error is not null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">@_error</RadzenAlert>
+}
+
+<form @onsubmit="SetupAsync" @onsubmit:preventDefault="true">
+    <RadzenStack Gap="1rem">
+        <RadzenFormField Text="@L["UserName"]" Variant="Variant.Outlined">
+            <RadzenTextBox @bind-Value="_userName" autocomplete="username" autofocus Style="width: 100%;" />
+        </RadzenFormField>
+        <RadzenFormField Text="@L["DisplayName"]" Variant="Variant.Outlined">
+            <RadzenTextBox @bind-Value="_displayName" autocomplete="name" Style="width: 100%;" />
+        </RadzenFormField>
+        <RadzenFormField Text="@L["Password"]" Variant="Variant.Outlined">
+            <ChildContent>
+                <RadzenPassword @bind-Value="_password" autocomplete="new-password" Style="width: 100%;" />
+            </ChildContent>
+            <Helper>
+                <RadzenText TextStyle="TextStyle.Caption">@L["PasswordHint"]</RadzenText>
+            </Helper>
+        </RadzenFormField>
+        <RadzenButton ButtonType="ButtonType.Submit" Text="@L["CreateAccount"]" IsBusy="@_busy"
+                      Disabled="@(string.IsNullOrWhiteSpace(_userName) || _password.Length < 8)" />
+    </RadzenStack>
+</form>
+
+@code {
+    private string _userName = "";
+    private string _displayName = "";
+    private string _password = "";
+    private string? _error;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!(await Auth.GetStatusAsync()).SetupRequired)
+        {
+            Navigation.NavigateTo("login");
+        }
+    }
+
+    private async Task SetupAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Api.SetupAsync(new SetupRequest(_userName, _password, string.IsNullOrWhiteSpace(_displayName) ? null : _displayName));
+            Navigation.NavigateTo("", forceLoad: true);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

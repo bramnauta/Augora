@@ -54,4 +54,49 @@
   <data name="Add" xml:space="preserve"><value>Toevoegen</value></data>
   <data name="NoManualDevices" xml:space="preserve"><value>Geen handmatige apparaten</value></data>
   <data name="Back" xml:space="preserve"><value>Terug</value></data>
+  <data name="Nav_Users" xml:space="preserve"><value>Gebruikers</value></data>
+  <data name="Nav_Account" xml:space="preserve"><value>Account</value></data>
+  <data name="Logout" xml:space="preserve"><value>Uitloggen</value></data>
+  <data name="Login" xml:space="preserve"><value>Inloggen</value></data>
+  <data name="LoginWith" xml:space="preserve"><value>Inloggen met {0}</value></data>
+  <data name="UserName" xml:space="preserve"><value>Gebruikersnaam</value></data>
+  <data name="Password" xml:space="preserve"><value>Wachtwoord</value></data>
+  <data name="PasswordHint" xml:space="preserve"><value>Minimaal 8 tekens</value></data>
+  <data name="LoginFailed" xml:space="preserve"><value>Inloggen mislukt</value></data>
+  <data name="ExternalLoginFailed" xml:space="preserve"><value>Inloggen via de externe provider is mislukt.</value></data>
+  <data name="SetupTitle" xml:space="preserve"><value>Welkom bij AudioCentral</value></data>
+  <data name="SetupIntro" xml:space="preserve"><value>Maak het eerste account aan. Dit account wordt beheerder.</value></data>
+  <data name="DisplayName" xml:space="preserve"><value>Weergavenaam</value></data>
+  <data name="CreateAccount" xml:space="preserve"><value>Account aanmaken</value></data>
+  <data name="ChangePassword" xml:space="preserve"><value>Wachtwoord wijzigen</value></data>
+  <data name="CurrentPassword" xml:space="preserve"><value>Huidig wachtwoord</value></data>
+  <data name="NewPassword" xml:space="preserve"><value>Nieuw wachtwoord</value></data>
+  <data name="PasswordChanged" xml:space="preserve"><value>Wachtwoord gewijzigd</value></data>
+  <data name="ApiTokens" xml:space="preserve"><value>API-tokens</value></data>
+  <data name="ApiTokensHelp" xml:space="preserve"><value>Langlevende tokens voor Home Assistant en scripts. Stuur ze mee als 'Authorization: Bearer &lt;token&gt;'.</value></data>
+  <data name="TokenName" xml:space="preserve"><value>Naam (bijv. Home Assistant)</value></data>
+  <data name="CreateToken" xml:space="preserve"><value>Token aanmaken</value></data>
+  <data name="TokenCreated" xml:space="preserve"><value>Kopieer het token nu: het wordt maar één keer getoond.</value></data>
+  <data name="NoTokens" xml:space="preserve"><value>Nog geen tokens</value></data>
+  <data name="LastUsed" xml:space="preserve"><value>Laatst gebruikt</value></data>
+  <data name="Never" xml:space="preserve"><value>Nooit</value></data>
+  <data name="Revoke" xml:space="preserve"><value>Intrekken</value></data>
+  <data name="Created" xml:space="preserve"><value>Aangemaakt</value></data>
+  <data name="Copy" xml:space="preserve"><value>Kopiëren</value></data>
+  <data name="Copied" xml:space="preserve"><value>Gekopieerd</value></data>
+  <data name="Admin" xml:space="preserve"><value>Beheerder</value></data>
+  <data name="RegularUser" xml:space="preserve"><value>Gebruiker</value></data>
+  <data name="NewUser" xml:space="preserve"><value>Nieuwe gebruiker</value></data>
+  <data name="ResetPassword" xml:space="preserve"><value>Wachtwoord resetten</value></data>
+  <data name="Delete" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="ConfirmDeleteUser" xml:space="preserve"><value>Gebruiker {0} verwijderen?</value></data>
+  <data name="Save" xml:space="preserve"><value>Opslaan</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Annuleren</value></data>
+  <data name="Saved" xml:space="preserve"><value>Opgeslagen</value></data>
+  <data name="Or" xml:space="preserve"><value>of</value></data>
+  <data name="BrowserPlayer" xml:space="preserve"><value>Deze browser als speler</value></data>
+  <data name="BrowserPlayerReleased" xml:space="preserve"><value>Een ander tabblad gebruikt deze browser nu als speler.</value></data>
+  <data name="AutoplayBlocked" xml:space="preserve"><value>De browser blokkeert automatisch afspelen. Klik om geluid toe te staan.</value></data>
+  <data name="AllowPlayback" xml:space="preserve"><value>Afspelen toestaan</value></data>
+  <data name="ForgetPlayer" xml:space="preserve"><value>Speler vergeten</value></data>
 </root>

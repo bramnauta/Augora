@@ -1,0 +1,125 @@
+@page "/account"
+@inject ApiClient Api
+@inject IJSRuntime JS
+@inject NotificationService Notifications
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@L["Nav_Account"] · AudioCentral</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">@L["Nav_Account"]</RadzenText>
+
+<RadzenStack Gap="1.5rem" Style="max-width: 50rem;">
+    <RadzenCard Variant="Variant.Filled">
+        <RadzenText TextStyle="TextStyle.H6">@L["ApiTokens"]</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body2">@L["ApiTokensHelp"]</RadzenText>
+
+        @if (_created is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Success" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="true" Close="@(() => _created = null)">
+                <RadzenText TextStyle="TextStyle.Body2">@L["TokenCreated"]</RadzenText>
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <code style="word-break: break-all; flex: 1;">@_created.Secret</code>
+                    <RadzenButton Icon="content_copy" Variant="Variant.Text" title="@L["Copy"]" Click="CopyAsync" />
+                </RadzenStack>
+            </RadzenAlert>
+        }
+
+        @if (_tokens.Count == 0)
+        {
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-my-4"><em>@L["NoTokens"]</em></RadzenText>
+        }
+        else
+        {
+            <RadzenStack Gap="0.25rem" class="rz-my-4">
+                @foreach (var token in _tokens)
+                {
+                    <RadzenStack @key="token.Id" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                        <RadzenIcon Icon="key" />
+                        <RadzenStack Gap="0" Style="flex: 1;">
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0">@token.Name <code>@token.Prefix…</code></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">
+                                @L["Created"]: @token.CreatedAt.ToLocalTime().ToString("g") · @L["LastUsed"]: @(token.LastUsedAt?.ToLocalTime().ToString("g") ?? L["Never"])
+                            </RadzenText>
+                        </RadzenStack>
+                        <RadzenButton Icon="delete" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["Revoke"]" Click="@(() => RevokeAsync(token))" />
+                    </RadzenStack>
+                }
+            </RadzenStack>
+        }
+
+        <form @onsubmit="CreateAsync" @onsubmit:preventDefault="true">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+                <RadzenFormField Text="@L["TokenName"]" Style="flex: 1; min-width: 14rem;">
+                    <RadzenTextBox @bind-Value="_tokenName" />
+                </RadzenFormField>
+                <RadzenButton ButtonType="ButtonType.Submit" Icon="add" Text="@L["CreateToken"]" Disabled="@string.IsNullOrWhiteSpace(_tokenName)" />
+            </RadzenStack>
+        </form>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Filled">
+        <RadzenText TextStyle="TextStyle.H6">@L["ChangePassword"]</RadzenText>
+        <form @onsubmit="ChangePasswordAsync" @onsubmit:preventDefault="true">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+                <RadzenFormField Text="@L["CurrentPassword"]">
+                    <RadzenPassword @bind-Value="_currentPassword" autocomplete="current-password" />
+                </RadzenFormField>
+                <RadzenFormField Text="@L["NewPassword"]">
+                    <RadzenPassword @bind-Value="_newPassword" autocomplete="new-password" />
+                </RadzenFormField>
+                <RadzenButton ButtonType="ButtonType.Submit" Text="@L["Save"]" Disabled="@(_currentPassword.Length == 0 || _newPassword.Length < 8)" />
+            </RadzenStack>
+        </form>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private List<ApiTokenDto> _tokens = [];
+    private CreatedApiTokenDto? _created;
+    private string _tokenName = "";
+    private string _currentPassword = "";
+    private string _newPassword = "";
+
+    protected override async Task OnInitializedAsync() => _tokens = await Api.GetApiTokensAsync();
+
+    private async Task CreateAsync()
+    {
+        await RunAsync(async () =>
+        {
+            _created = await Api.CreateApiTokenAsync(_tokenName);
+            _tokens = [_created.Token, .. _tokens];
+            _tokenName = "";
+        });
+    }
+
+    private Task RevokeAsync(ApiTokenDto token) => RunAsync(async () =>
+    {
+        await Api.RevokeApiTokenAsync(token.Id);
+        _tokens = _tokens.Where(t => t.Id != token.Id).ToList();
+    });
+
+    private Task ChangePasswordAsync() => RunAsync(async () =>
+    {
+        await Api.ChangePasswordAsync(new ChangePasswordRequest(_currentPassword, _newPassword));
+        _currentPassword = _newPassword = "";
+        Notifications.Notify(NotificationSeverity.Success, L["PasswordChanged"]);
+    });
+
+    private async Task CopyAsync()
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _created!.Secret);
+        Notifications.Notify(NotificationSeverity.Info, L["Copied"], duration: 1500);
+    }
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message, duration: 8000);
+        }
+    }
+}

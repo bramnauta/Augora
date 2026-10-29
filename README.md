@@ -10,7 +10,11 @@ en in de browser. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp 
 - ✅ Google Cast: mDNS-discovery, handmatig toevoegen (andere VLAN's), groepen, volume/pauze/stop
 - ✅ Wachtrij per speler (bewaard in SQLite), realtime updates via SignalR
 - ✅ Blazor WebAssembly-UI (Radzen), Nederlands en Engels
-- ⏳ Auth, browser-speler, Spotify, lokale bestanden, podcasts, Android, Home Assistant, Nextory
+- ✅ Inloggen: lokale accounts met admin-rol, API-tokens (Home Assistant), access/refresh-tokens (apps), optioneel OIDC
+- ✅ Browser als speler (ook op telefoon), via hetzelfde protocol dat de Android-app gaat gebruiken
+- ⏳ Spotify, lokale bestanden, podcasts, Android, Home Assistant, Nextory
+
+Bij de eerste start vraagt de UI om het eerste account aan te maken; dat wordt beheerder.
 
 ## Ontwikkelen
 
@@ -51,8 +55,19 @@ Belangrijke instellingen (omgevingsvariabelen):
 | `AudioCentral__PublicBaseUrl` | Publieke URL achter een reverse proxy. |
 | `Providers__TuneIn__Username` | TuneIn-gebruikersnaam voor favorieten. |
 | `Players__GoogleCast__Discovery` | `false` om mDNS uit te zetten (alleen handmatige apparaten). |
+| `Authentication__Oidc__Authority` | Issuer-URL van je OIDC-provider; leeg = geen SSO. Redirect-URI: `https://<host>/signin-oidc`. |
+| `Authentication__Oidc__ClientId` / `__ClientSecret` | Client-gegevens bij de OIDC-provider. |
+| `Authentication__Oidc__DisplayName` | Tekst op de inlogknop, bijv. `Authentik`. |
+
+`/data` bevat de database én de sleutels van inlogsessies (`/data/keys`): bewaar het volume.
 
 ## API
 
 REST onder `/api` (OpenAPI: `/openapi/v1.json`, Scalar-UI op `/scalar` in development) en een
 SignalR-hub op `/hubs/events`. Fouten zijn Problem Details met een `code`-veld.
+
+Voor scripts en Home Assistant: maak onder **Account** een API-token aan en stuur het mee:
+
+```bash
+curl -H "Authorization: Bearer act_..." http://<host>:4727/api/players
+```

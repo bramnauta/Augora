@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
 
@@ -19,6 +20,8 @@
     <ProjectReference Include="..\..\src\AudioCentral.Core\AudioCentral.Core.csproj" />
     <ProjectReference Include="..\..\src\AudioCentral.Providers.TuneIn\AudioCentral.Providers.TuneIn.csproj" />
     <ProjectReference Include="..\..\src\AudioCentral.Players.GoogleCast\AudioCentral.Players.GoogleCast.csproj" />
+    <ProjectReference Include="..\..\src\AudioCentral.Players.Remote\AudioCentral.Players.Remote.csproj" />
+    <ProjectReference Include="..\..\src\AudioCentral.Server\AudioCentral.Server.csproj" />
   </ItemGroup>
 
 </Project>

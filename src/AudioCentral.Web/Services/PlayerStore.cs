@@ -28,6 +28,9 @@ public sealed class PlayerStore(ApiClient api, NavigationManager navigation, IJS
 
     public bool IsConnected => _hub?.State == HubConnectionState.Connected;
 
+    /// <summary>The events hub, shared with <see cref="BrowserPlayerService"/>. Created by <see cref="InitializeAsync"/>.</summary>
+    public HubConnection? Hub => _hub;
+
     public Task InitializeAsync() => _initialization ??= InitializeCoreAsync();
 
     public async Task SelectPlayerAsync(string? playerId)
@@ -75,7 +78,13 @@ public sealed class PlayerStore(ApiClient api, NavigationManager navigation, IJS
 
         _hub.On<PlayerDto>(EventsHub.PlayerUpdated, player =>
         {
+            var isNew = _players.TryAdd(player.Id, player);
             _players[player.Id] = player;
+            if (isNew && string.Equals(player.Id, SelectedPlayerId, StringComparison.OrdinalIgnoreCase))
+            {
+                _ = RefreshQueueAsync();
+            }
+
             Changed?.Invoke();
         });
         _hub.On<string>(EventsHub.PlayerRemoved, id =>
@@ -102,8 +111,10 @@ public sealed class PlayerStore(ApiClient api, NavigationManager navigation, IJS
         await _hub.StartAsync();
         await LoadPlayersAsync();
 
+        // Keep the stored choice even if the player is not known yet: after a server restart a
+        // browser or app player only appears once it has registered again.
         var stored = await js.InvokeAsync<string?>("localStorage.getItem", SelectedPlayerKey);
-        var initial = !string.IsNullOrEmpty(stored) && _players.ContainsKey(stored) ? stored : Players.FirstOrDefault(p => p.Available)?.Id;
+        var initial = !string.IsNullOrEmpty(stored) ? stored : Players.FirstOrDefault(p => p.Available)?.Id;
         await SelectPlayerAsync(initial);
     }
 

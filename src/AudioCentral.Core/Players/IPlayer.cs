@@ -51,9 +51,15 @@ public sealed record PlayerStatus(
     public static PlayerStatus Unavailable { get; } = new(false, PlaybackState.Idle, 0, false, null, null);
 }
 
-/// <summary>What a player is asked to play. <see cref="StreamUrl"/> points to AudioCentral's stream endpoint.</summary>
+/// <summary>What a player is asked to play.</summary>
+/// <param name="StreamUrl">Absolute url for players on the LAN (Cast): AudioCentral's stream endpoint, or the upstream for direct streams.</param>
+/// <param name="StreamPath">
+/// The same stream relative to the server (<c>/api/stream/...</c>), for players that reach AudioCentral through
+/// the url of the UI (browser behind a reverse proxy). Absolute for direct streams.
+/// </param>
 public sealed record PlayMedia(
     Uri StreamUrl,
+    string StreamPath,
     string ContentType,
     bool IsLive,
     string ItemUri,

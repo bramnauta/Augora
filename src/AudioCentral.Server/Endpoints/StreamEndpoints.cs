@@ -17,6 +17,7 @@ internal static class StreamEndpoints
 
                 await relay.ServeAsync(session, context);
             })
+            .AllowAnonymous()
             .ExcludeFromDescription();
 
         return app;

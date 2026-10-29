@@ -97,7 +97,7 @@ speler ──HTTP GET──▶ /api/stream/{sessionId}  ──▶ StreamSession 
 - Daarnaast kun je in de UI apparaten handmatig toevoegen (host + poort, ook groepen met hun
   eigen poort); die worden in SQLite bewaard en periodiek gecontroleerd.
 
-## Spotify (fase 2)
+## Spotify (fase 3)
 
 - Per gekoppeld account draait een librespot-instance (sidecar-container, één proces per account)
   die audio naar AudioCentral pipet; wij transcoderen en streamen naar de speler.
@@ -115,16 +115,49 @@ speler ──HTTP GET──▶ /api/stream/{sessionId}  ──▶ StreamSession 
 - REST onder `/api/...`, OpenAPI-document op `/openapi/v1.json`, Scalar-UI in development.
 - SignalR-hub `/hubs/events`: realtime events (`PlayerUpdated`, `QueueUpdated`, ...) voor UI,
   Android en Home Assistant.
-- Spelers die zelf audio afspelen (browser, Android) melden zich aan via dezelfde hub
-  (`RegisterPlayer`) en ontvangen commando's (`Play`, `Pause`, ...). Zo is er één generiek
-  speler-protocol.
 - Foutmeldingen als RFC 9457 Problem Details met een machineleesbare `code`.
+
+### Remote players (browser, later Android)
+
+Spelers die zelf audio afspelen gebruiken één generiek protocol over de hub
+(`AudioCentral.Players.Remote`, contract in `Contracts/RemotePlayers.cs`):
+
+| Richting | Methode | Inhoud |
+|---|---|---|
+| client → server | `RegisterPlayer(RegisterPlayerRequest)` | `DeviceId` (stabiel per apparaat), naam, soort; geeft de player-id terug |
+| client → server | `ReportPlayerState(RemotePlayerStateDto)` | toestand, volume, positie, en `Finished`/`Error` als het item vanzelf stopte |
+| client → server | `UnregisterPlayer()` | |
+| server → client | `PlayerCommand(RemotePlayerCommandDto)` | `Play` (met stream-URL en metadata), `Pause`, `Resume`, `Stop`, `SetVolume`, `SetMuted` |
+| server → client | `PlayerReleased()` | een andere verbinding nam dit apparaat over |
+
+- De player-id is `remote:{deviceId}`, zodat de wachtrij een reload of herverbinding overleeft. Na
+  het wegvallen van de verbinding blijft de speler bekend als "niet beschikbaar"; gebruikers kunnen
+  hem vergeten.
+- Remote players krijgen een **relatieve** stream-URL (`/api/stream/{token}`), zodat ze via de
+  publieke URL van de UI (reverse proxy, HTTPS) streamen. Cast-apparaten krijgen de absolute LAN-URL.
+- De browser-speler (`wwwroot/js/browserPlayer.js`) gebruikt een `<audio>`-element en de Media
+  Session API. Browsers blokkeren automatisch afspelen zonder klik; de UI toont dan een knop
+  "Afspelen toestaan". HLS-streams kan Chrome niet native afspelen.
 
 ## Authenticatie
 
-- ASP.NET Core Identity met SQLite. De eerste gebruiker die zich registreert wordt admin.
-- UI: cookie (same-origin). API-clients (Home Assistant, Android): bearer-tokens.
-- Optioneel OIDC (Authentik/Keycloak) als extra login-methode.
+Altijd inloggen; er is geen anonieme toegang tot de API (behalve het stream-endpoint, dat met een
+niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
+
+| Client | Methode |
+|---|---|
+| Web-UI | Identity-cookie (`POST /api/auth/login` met `useCookies: true`), 30 dagen sliding |
+| Android-app | `POST /api/auth/login` met `useCookies: false` → access token (1 uur) + refresh token (60 dagen, `POST /api/auth/refresh`) |
+| Home Assistant, scripts | Langlevend API-token (`act_...`), aan te maken onder Account; alleen de SHA-256 wordt opgeslagen |
+| SSO (optioneel) | OpenID Connect (Authentik, Keycloak, ...) via `Authentication:Oidc`; nieuwe gebruikers worden automatisch aangemaakt |
+
+- Een policy-scheme kiest per request: `Bearer act_...` → API-token, andere bearer → Identity-bearer,
+  anders cookie. Op de hub mag het token ook als `access_token` in de query staan.
+- De eerste gebruiker (via `/setup` of de eerste OIDC-login) wordt **Admin**. Admins beheren
+  gebruikers, handmatige Cast-apparaten en instellingen; gewone gebruikers kunnen alles afspelen
+  en bedienen. Alle spelers zijn voor iedereen zichtbaar.
+- Data-protection-sleutels staan in `{DataDirectory}/keys`, zodat logins en refresh-tokens een
+  herstart overleven.
 
 ## Deployment
 
@@ -134,8 +167,8 @@ speler ──HTTP GET──▶ /api/stream/{sessionId}  ──▶ StreamSession 
 
 ## Roadmap
 
-1. **Basis** – solution, Aspire, Docker, core-abstracties, TuneIn → Google Cast, Blazor UI.
-2. **Auth + browser-speler** – Identity, tokens, browser als speler via de hub.
+1. ✅ **Basis** – solution, Aspire, Docker, core-abstracties, TuneIn → Google Cast, Blazor UI.
+2. ✅ **Auth + browser-speler** – Identity, tokens, browser als speler via de hub.
 3. **Spotify** – librespot-sidecar, meerdere accounts, account-pool.
 4. **Lokale bestanden + podcasts**.
 5. **Android-app** en **Home Assistant-integratie**.

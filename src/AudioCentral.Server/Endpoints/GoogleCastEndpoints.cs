@@ -1,6 +1,7 @@
 using AudioCentral.Contracts;
 using AudioCentral.Players.GoogleCast;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AudioCentral.Server.Endpoints;
 
@@ -8,13 +9,14 @@ internal static class GoogleCastEndpoints
 {
     public static IEndpointRouteBuilder MapGoogleCastEndpoints(this IEndpointRouteBuilder app)
     {
-        var devices = app.MapGroup("/api/googlecast/devices").WithTags("Google Cast");
+        var devices = app.MapGroup("/api/googlecast/devices").WithTags("Google Cast").RequireAuthorization(Roles.Admin);
 
-        devices.MapGet("/", (CastPlayerProvider cast, CancellationToken ct) => cast.GetManualDevicesAsync(ct))
+        // [FromServices]: with Google Cast disabled the provider is not registered and must not be read from the body.
+        devices.MapGet("/", ([FromServices] CastPlayerProvider cast, CancellationToken ct) => cast.GetManualDevicesAsync(ct))
             .WithSummary("Manually added Cast devices.");
 
         devices.MapPost("/", async Task<Results<Created<ManualCastDeviceDto>, ValidationProblem>> (
-            AddManualCastDeviceRequest request, CastPlayerProvider cast, CancellationToken ct) =>
+            AddManualCastDeviceRequest request, [FromServices] CastPlayerProvider cast, CancellationToken ct) =>
         {
             var errors = new Dictionary<string, string[]>();
             if (string.IsNullOrWhiteSpace(request.Name))
@@ -41,7 +43,7 @@ internal static class GoogleCastEndpoints
             return TypedResults.Created($"/api/googlecast/devices/{device.Id}", device);
         });
 
-        devices.MapDelete("/{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id, CastPlayerProvider cast, CancellationToken ct) =>
+        devices.MapDelete("/{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id, [FromServices] CastPlayerProvider cast, CancellationToken ct) =>
             await cast.RemoveManualDeviceAsync(id, ct) ? TypedResults.NoContent() : TypedResults.NotFound());
 
         return app;

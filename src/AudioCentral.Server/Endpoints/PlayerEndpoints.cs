@@ -1,6 +1,8 @@
 using AudioCentral.Contracts;
 using AudioCentral.Core.Players;
 using AudioCentral.Core.Queue;
+using AudioCentral.Players.Remote;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace AudioCentral.Server.Endpoints;
 
@@ -14,12 +16,30 @@ internal static class PlayerEndpoints
 
         players.MapGet("/{id}", (string id, PlayerManager manager) => manager.Get(id).ToDto());
 
+        players.MapDelete("/{id}", Results<NoContent, NotFound, ProblemHttpResult> (string id, PlayerManager manager, RemotePlayerProvider remote) =>
+            {
+                var player = manager.Get(id);
+                if (player.ProviderId != RemotePlayerProvider.ProviderId)
+                {
+                    return TypedResults.Problem("Only browser and app players can be removed.", statusCode: StatusCodes.Status400BadRequest);
+                }
+
+                if (player.Status.Available)
+                {
+                    return TypedResults.Problem("The player is still connected.", statusCode: StatusCodes.Status409Conflict);
+                }
+
+                return remote.Remove(id) ? TypedResults.NoContent() : TypedResults.NotFound();
+            })
+            .WithSummary("Forget a disconnected browser or app player.");
+
         players.MapPost("/{id}/play", (string id, PlayRequest request, QueueManager queues, CancellationToken ct) =>
                 queues.PlayAsync(id, request.Uri, request.Option, ct))
             .WithSummary("Play or enqueue a media item.");
 
         players.MapPost("/{id}/pause", (string id, PlayerManager manager, CancellationToken ct) => Command(manager.GetAvailable(id).PauseAsync(ct)));
-        players.MapPost("/{id}/resume", (string id, PlayerManager manager, CancellationToken ct) => Command(manager.GetAvailable(id).ResumeAsync(ct)));
+        players.MapPost("/{id}/resume", (string id, QueueManager queues, CancellationToken ct) => queues.ResumeAsync(id, ct))
+            .WithSummary("Resume when paused; restart the current queue item when idle.");
         players.MapPost("/{id}/stop", (string id, PlayerManager manager, CancellationToken ct) => Command(manager.GetAvailable(id).StopAsync(ct)));
         players.MapPost("/{id}/next", (string id, QueueManager queues, CancellationToken ct) => queues.NextAsync(id, ct));
         players.MapPost("/{id}/previous", (string id, QueueManager queues, CancellationToken ct) => queues.PreviousAsync(id, ct));

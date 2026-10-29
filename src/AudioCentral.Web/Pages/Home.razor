@@ -1,6 +1,8 @@
 ﻿@page "/"
 @implements IDisposable
 @inject PlayerStore Store
+@inject ApiClient Api
+@inject NotificationService Notifications
 @inject IStringLocalizer<Strings> L
 
 <PageTitle>@L["Nav_Players"] · AudioCentral</PageTitle>
@@ -21,10 +23,17 @@ else
                     <RadzenStack Gap="0.75rem">
                         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
                             <RadzenBadge BadgeStyle="BadgeStyle.Base" Variant="Variant.Outlined" Text="@L[$"Kind_{player.Kind}"]" />
-                            @if (player.Id != Store.SelectedPlayerId)
-                            {
-                                <RadzenButton Text="@L["SelectPlayer"]" Size="ButtonSize.Small" Variant="Variant.Text" Click="@(() => Store.SelectPlayerAsync(player.Id))" />
-                            }
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem">
+                                @if (player.Id != Store.SelectedPlayerId)
+                                {
+                                    <RadzenButton Text="@L["SelectPlayer"]" Size="ButtonSize.Small" Variant="Variant.Text" Click="@(() => Store.SelectPlayerAsync(player.Id))" />
+                                }
+                                @if (player.Provider == "remote" && !player.Available)
+                                {
+                                    <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["ForgetPlayer"]"
+                                                  Click="@(() => ForgetAsync(player))" />
+                                }
+                            </RadzenStack>
                         </RadzenStack>
                         <NowPlayingInfo Player="@player" />
                         <PlayerControls Player="@player" />
@@ -37,6 +46,18 @@ else
 
 @code {
     protected override void OnInitialized() => Store.Changed += OnChanged;
+
+    private async Task ForgetAsync(PlayerDto player)
+    {
+        try
+        {
+            await Api.ForgetPlayerAsync(player.Id);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
 

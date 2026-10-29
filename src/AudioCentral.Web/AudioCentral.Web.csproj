@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
-    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
     <!-- Needed to switch between nl and en at runtime -->
     <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
   </PropertyGroup>
@@ -10,7 +9,17 @@
     <ProjectReference Include="..\AudioCentral.Contracts\AudioCentral.Contracts.csproj" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <!--
+      No trimming: the contracts are deserialised with reflection (HttpClient, SignalR, JS interop) and
+      Radzen uses reflection too; trimmed builds failed with DeserializeNoConstructor. For a self-hosted
+      app the larger (brotli-compressed, cached) download is the better trade-off.
+    -->
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />

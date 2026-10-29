@@ -54,4 +54,49 @@
   <data name="Add" xml:space="preserve"><value>Add</value></data>
   <data name="NoManualDevices" xml:space="preserve"><value>No manual devices</value></data>
   <data name="Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Nav_Users" xml:space="preserve"><value>Users</value></data>
+  <data name="Nav_Account" xml:space="preserve"><value>Account</value></data>
+  <data name="Logout" xml:space="preserve"><value>Log out</value></data>
+  <data name="Login" xml:space="preserve"><value>Log in</value></data>
+  <data name="LoginWith" xml:space="preserve"><value>Log in with {0}</value></data>
+  <data name="UserName" xml:space="preserve"><value>User name</value></data>
+  <data name="Password" xml:space="preserve"><value>Password</value></data>
+  <data name="PasswordHint" xml:space="preserve"><value>At least 8 characters</value></data>
+  <data name="LoginFailed" xml:space="preserve"><value>Login failed</value></data>
+  <data name="ExternalLoginFailed" xml:space="preserve"><value>Logging in with the external provider failed.</value></data>
+  <data name="SetupTitle" xml:space="preserve"><value>Welcome to AudioCentral</value></data>
+  <data name="SetupIntro" xml:space="preserve"><value>Create the first account. It becomes the administrator.</value></data>
+  <data name="DisplayName" xml:space="preserve"><value>Display name</value></data>
+  <data name="CreateAccount" xml:space="preserve"><value>Create account</value></data>
+  <data name="ChangePassword" xml:space="preserve"><value>Change password</value></data>
+  <data name="CurrentPassword" xml:space="preserve"><value>Current password</value></data>
+  <data name="NewPassword" xml:space="preserve"><value>New password</value></data>
+  <data name="PasswordChanged" xml:space="preserve"><value>Password changed</value></data>
+  <data name="ApiTokens" xml:space="preserve"><value>API tokens</value></data>
+  <data name="ApiTokensHelp" xml:space="preserve"><value>Long-lived tokens for Home Assistant and scripts. Send them as 'Authorization: Bearer &lt;token&gt;'.</value></data>
+  <data name="TokenName" xml:space="preserve"><value>Name (e.g. Home Assistant)</value></data>
+  <data name="CreateToken" xml:space="preserve"><value>Create token</value></data>
+  <data name="TokenCreated" xml:space="preserve"><value>Copy the token now: it is only shown once.</value></data>
+  <data name="NoTokens" xml:space="preserve"><value>No tokens yet</value></data>
+  <data name="LastUsed" xml:space="preserve"><value>Last used</value></data>
+  <data name="Never" xml:space="preserve"><value>Never</value></data>
+  <data name="Revoke" xml:space="preserve"><value>Revoke</value></data>
+  <data name="Created" xml:space="preserve"><value>Created</value></data>
+  <data name="Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="Admin" xml:space="preserve"><value>Administrator</value></data>
+  <data name="RegularUser" xml:space="preserve"><value>User</value></data>
+  <data name="NewUser" xml:space="preserve"><value>New user</value></data>
+  <data name="ResetPassword" xml:space="preserve"><value>Reset password</value></data>
+  <data name="Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="ConfirmDeleteUser" xml:space="preserve"><value>Delete user {0}?</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Saved" xml:space="preserve"><value>Saved</value></data>
+  <data name="Or" xml:space="preserve"><value>or</value></data>
+  <data name="BrowserPlayer" xml:space="preserve"><value>Use this browser as a player</value></data>
+  <data name="BrowserPlayerReleased" xml:space="preserve"><value>Another tab is now using this browser as a player.</value></data>
+  <data name="AutoplayBlocked" xml:space="preserve"><value>The browser blocks automatic playback. Click to allow sound.</value></data>
+  <data name="AllowPlayback" xml:space="preserve"><value>Allow playback</value></data>
+  <data name="ForgetPlayer" xml:space="preserve"><value>Forget player</value></data>
 </root>

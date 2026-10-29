@@ -1,6 +1,13 @@
 html, body {
     margin: 0;
     background: var(--rz-base-background-color);
+    color: var(--rz-text-color);
+    font-family: var(--rz-text-font-family);
+}
+
+/* Form controls do not inherit the font by default. */
+input, button, select, textarea {
+    font-family: inherit;
 }
 
 .media-image {

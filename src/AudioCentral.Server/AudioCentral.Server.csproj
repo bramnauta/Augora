@@ -10,11 +10,14 @@
     <ProjectReference Include="..\AudioCentral.Core\AudioCentral.Core.csproj" />
     <ProjectReference Include="..\AudioCentral.Providers.TuneIn\AudioCentral.Providers.TuneIn.csproj" />
     <ProjectReference Include="..\AudioCentral.Players.GoogleCast\AudioCentral.Players.GoogleCast.csproj" />
+    <ProjectReference Include="..\AudioCentral.Players.Remote\AudioCentral.Players.Remote.csproj" />
     <ProjectReference Include="..\AudioCentral.Web\AudioCentral.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />

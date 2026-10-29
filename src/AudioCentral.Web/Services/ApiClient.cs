@@ -9,7 +9,39 @@ namespace AudioCentral.Web.Services;
 /// </summary>
 public sealed class ApiClient(HttpClient http)
 {
+    /// <summary>Raised when the server answers 401: the session expired or the user was removed.</summary>
+    public event Action? Unauthorized;
+
+    public Task<AuthStatusDto> GetAuthStatusAsync() => GetAsync<AuthStatusDto>("api/auth/status");
+
+    public Task<UserDto> SetupAsync(SetupRequest request) => SendAsync<UserDto>(HttpMethod.Post, "api/auth/setup", request);
+
+    public Task LoginAsync(string userName, string password) =>
+        SendAsync(HttpMethod.Post, "api/auth/login", new LoginRequest(userName, password, UseCookies: true));
+
+    public Task LogoutAsync() => SendAsync(HttpMethod.Post, "api/auth/logout");
+
+    public Task ChangePasswordAsync(ChangePasswordRequest request) => SendAsync(HttpMethod.Post, "api/auth/password", request);
+
+    public Task<List<ApiTokenDto>> GetApiTokensAsync() => GetAsync<List<ApiTokenDto>>("api/tokens");
+
+    public Task<CreatedApiTokenDto> CreateApiTokenAsync(string name) =>
+        SendAsync<CreatedApiTokenDto>(HttpMethod.Post, "api/tokens", new CreateApiTokenRequest(name));
+
+    public Task RevokeApiTokenAsync(Guid id) => SendAsync(HttpMethod.Delete, $"api/tokens/{id}");
+
+    public Task<List<UserDto>> GetUsersAsync() => GetAsync<List<UserDto>>("api/users");
+
+    public Task<UserDto> CreateUserAsync(CreateUserRequest request) => SendAsync<UserDto>(HttpMethod.Post, "api/users", request);
+
+    public Task<UserDto> UpdateUserAsync(string id, UpdateUserRequest request) =>
+        SendAsync<UserDto>(HttpMethod.Put, $"api/users/{Escape(id)}", request);
+
+    public Task DeleteUserAsync(string id) => SendAsync(HttpMethod.Delete, $"api/users/{Escape(id)}");
+
     public Task<List<PlayerDto>> GetPlayersAsync() => GetAsync<List<PlayerDto>>("api/players");
+
+    public Task ForgetPlayerAsync(string playerId) => SendAsync(HttpMethod.Delete, $"api/players/{Escape(playerId)}");
 
     public Task<BrowseResultDto> BrowseAsync(string? uri) =>
         GetAsync<BrowseResultDto>(uri is null ? "api/browse" : $"api/browse?uri={Uri.EscapeDataString(uri)}");
@@ -21,7 +53,7 @@ public sealed class ApiClient(HttpClient http)
 
     public Task PauseAsync(string playerId) => SendAsync(HttpMethod.Post, $"api/players/{Escape(playerId)}/pause");
 
-    public Task ResumeAsync(string playerId) => SendAsync(HttpMethod.Post, $"api/players/{Escape(playerId)}/resume");
+    public Task<QueueDto> ResumeAsync(string playerId) => SendAsync<QueueDto>(HttpMethod.Post, $"api/players/{Escape(playerId)}/resume");
 
     public Task StopAsync(string playerId) => SendAsync(HttpMethod.Post, $"api/players/{Escape(playerId)}/stop");
 
@@ -85,11 +117,16 @@ public sealed class ApiClient(HttpClient http)
         return http.SendAsync(request);
     }
 
-    private static async Task EnsureSuccessAsync(HttpResponseMessage response)
+    private async Task EnsureSuccessAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
         {
             return;
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && response.RequestMessage?.RequestUri?.AbsolutePath.StartsWith("/api/auth/", StringComparison.Ordinal) != true)
+        {
+            Unauthorized?.Invoke();
         }
 
         string? title = null;

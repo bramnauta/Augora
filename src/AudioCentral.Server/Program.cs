@@ -4,8 +4,10 @@ using AudioCentral.Core.Events;
 using AudioCentral.Core.Queue;
 using AudioCentral.Core.Streaming;
 using AudioCentral.Players.GoogleCast;
+using AudioCentral.Players.Remote;
 using AudioCentral.Providers.TuneIn;
 using AudioCentral.Server;
+using AudioCentral.Server.Auth;
 using AudioCentral.Server.Data;
 using AudioCentral.Server.Endpoints;
 using AudioCentral.Server.Realtime;
@@ -25,13 +27,17 @@ Directory.CreateDirectory(dataDirectory);
 builder.Services.AddDbContextFactory<AudioCentralDbContext>(db =>
     db.UseSqlite($"Data Source={Path.Combine(dataDirectory, "audiocentral.db")}"));
 
+builder.AddAudioCentralAuth(dataDirectory);
+
 builder.Services
     .AddAudioCentralCore(builder.Configuration)
     .AddTuneIn(builder.Configuration)
-    .AddGoogleCast(builder.Configuration);
+    .AddGoogleCast(builder.Configuration)
+    .AddRemotePlayers();
 
 builder.Services.AddSingleton<IStreamUrlProvider, StreamUrlProvider>();
 builder.Services.AddSingleton<IEventPublisher, SignalREventPublisher>();
+builder.Services.AddSingleton<IRemotePlayerChannel, SignalRRemotePlayerChannel>();
 builder.Services.AddSingleton<IQueueStore, EfQueueStore>();
 builder.Services.AddScoped<ICastDeviceStore, EfCastDeviceStore>();
 
@@ -60,23 +66,36 @@ app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
-    app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapOpenApi().AllowAnonymous();
+    app.MapScalarApiReference().AllowAnonymous();
 }
 
 // Serves the Blazor WebAssembly app (including _framework) from the referenced AudioCentral.Web project.
-app.MapStaticAssets();
+// The app itself is public; it asks the API who is logged in.
+app.MapStaticAssets().AllowAnonymous();
 
 app.MapDefaultEndpoints();
+app.MapAuthEndpoints();
+app.MapUserEndpoints();
 app.MapLibraryEndpoints();
 app.MapPlayerEndpoints();
 app.MapGoogleCastEndpoints();
 app.MapStreamEndpoints();
 app.MapHub<AudioCentralHub>(EventsHub.Path);
 
-app.MapFallbackToFile("index.html");
+// index.html must never be cached: it decides which version of the app the browser loads after an update.
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+    OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache, no-store",
+}).AllowAnonymous();
 
 await app.RunAsync();
+
+/// <summary>Entry point, public for integration tests.</summary>
+public partial class Program;

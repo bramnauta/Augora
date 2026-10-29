@@ -82,6 +82,23 @@ public sealed class QueueManager
             return queue.ToDto();
         }, persist: true, cancellationToken);
 
+    /// <summary>Resumes a paused player, or restarts the current queue item when the player is idle (e.g. stopped live radio).</summary>
+    public Task<QueueDto> ResumeAsync(string playerId, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, async (queue, ct) =>
+        {
+            var player = _players.GetAvailable(playerId);
+            if (player.Status.State == PlaybackState.Paused)
+            {
+                await player.ResumeAsync(ct);
+            }
+            else if (player.Status.State == PlaybackState.Idle && (queue.CurrentIndex ?? (queue.Items.Count > 0 ? 0 : null)) is { } index)
+            {
+                await PlayIndexAsync(player, queue, index, ct);
+            }
+
+            return queue.ToDto();
+        }, persist: false, cancellationToken);
+
     public Task<QueueDto> NextAsync(string playerId, CancellationToken cancellationToken) =>
         MoveAsync(playerId, q => q.GetNextIndex(), cancellationToken);
 
@@ -147,11 +164,24 @@ public sealed class QueueManager
             throw new AudioCentralException(ErrorCodes.PlaybackFailed, $"Could not open the stream for '{item.Name}': {ex.Message}", 502, ex);
         }
 
-        var url = stream.Direct ? stream.Url : _urls.GetStreamUrl(_sessions.Create(player.Id, stream));
+        Uri url;
+        string path;
+        if (stream.Direct)
+        {
+            url = stream.Url;
+            path = stream.Url.ToString();
+        }
+        else
+        {
+            var session = _sessions.Create(player.Id, stream);
+            url = _urls.GetStreamUrl(session);
+            path = session.RelativePath;
+        }
+
         _logger.LogInformation("Playing {Item} on {Player} via {Url}", item.Ref, player.Name, url);
 
         await player.PlayAsync(
-            new PlayMedia(url, stream.ContentType, stream.IsLive, item.Ref.ToString(), item.Name, item.Subtitle, item.ImageUrl, item.Duration),
+            new PlayMedia(url, path, stream.ContentType, stream.IsLive, item.Ref.ToString(), item.Name, item.Subtitle, item.ImageUrl, item.Duration),
             cancellationToken);
     }
 

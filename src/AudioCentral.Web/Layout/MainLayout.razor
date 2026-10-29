@@ -1,10 +1,20 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
 @inject PlayerStore Store
+@inject BrowserPlayerService BrowserPlayer
 @inject CultureService Culture
+@inject ApiClient Api
+@inject NavigationManager Navigation
 @inject IStringLocalizer<Strings> L
 
 <RadzenComponents />
+
+@if (!_authenticated)
+{
+    @* AuthorizeRouteView renders its NotAuthorized content (the redirect to login) inside this layout. *@
+    @Body
+    return;
+}
 
 <RadzenLayout Style="grid-template-areas: 'rz-header rz-header' 'rz-sidebar rz-body' 'rz-footer rz-footer'; height: 100vh;">
     <RadzenHeader>
@@ -15,25 +25,62 @@
             <RadzenDropDown TValue="string" Data="@Store.Players" TextProperty="@nameof(PlayerDto.Name)" ValueProperty="@nameof(PlayerDto.Id)"
                             Value="@Store.SelectedPlayerId" Change="@(v => Store.SelectPlayerAsync(v as string))"
                             Placeholder="@L["SelectPlayer"]" Style="width: 14rem;" />
-            <RadzenDropDown TValue="string" Data="@CultureService.Supported.Select(s => new { s.Code, s.Name })" TextProperty="Name" ValueProperty="Code"
-                            Value="@CultureService.Current" Change="@(v => Culture.SetAsync((string)v))" Style="width: 9rem;" title="@L["Language"]" />
+            <AuthorizeView Context="auth">
+                <RadzenProfileMenu Click="OnProfileMenuClick">
+                    <Template>
+                        <RadzenIcon Icon="account_circle" />
+                    </Template>
+                    <ChildContent>
+                        <RadzenProfileMenuItem Text="@(auth.User.Identity?.Name ?? "")" Icon="person" Path="account" />
+                        <RadzenProfileMenuItem Text="@L["Logout"]" Icon="logout" Value="@("logout")" />
+                    </ChildContent>
+                </RadzenProfileMenu>
+            </AuthorizeView>
         </RadzenStack>
     </RadzenHeader>
 
     <RadzenSidebar @bind-Expanded="_sidebarExpanded">
-        <RadzenPanelMenu>
-            <RadzenPanelMenuItem Text="@L["Nav_Players"]" Icon="speaker" Path="/" />
-            <RadzenPanelMenuItem Text="@L["Nav_Browse"]" Icon="library_music" Path="/browse" />
-            <RadzenPanelMenuItem Text="@L["Nav_Search"]" Icon="search" Path="/search" />
-            <RadzenPanelMenuItem Text="@L["Nav_Queue"]" Icon="queue_music" Path="/queue" />
-            <RadzenPanelMenuItem Text="@L["Nav_Settings"]" Icon="settings" Path="/settings" />
-        </RadzenPanelMenu>
+        <RadzenStack Style="height: 100%;" JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenPanelMenu>
+                <RadzenPanelMenuItem Text="@L["Nav_Players"]" Icon="speaker" Path="/" />
+                <RadzenPanelMenuItem Text="@L["Nav_Browse"]" Icon="library_music" Path="/browse" />
+                <RadzenPanelMenuItem Text="@L["Nav_Search"]" Icon="search" Path="/search" />
+                <RadzenPanelMenuItem Text="@L["Nav_Queue"]" Icon="queue_music" Path="/queue" />
+                <RadzenPanelMenuItem Text="@L["Nav_Account"]" Icon="manage_accounts" Path="/account" />
+                <AuthorizeView Roles="@Roles.Admin">
+                    <RadzenPanelMenuItem Text="@L["Nav_Users"]" Icon="group" Path="/users" />
+                    <RadzenPanelMenuItem Text="@L["Nav_Settings"]" Icon="settings" Path="/settings" />
+                </AuthorizeView>
+            </RadzenPanelMenu>
+
+            <RadzenStack Gap="0.75rem" class="rz-p-4">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenSwitch Value="@BrowserPlayer.IsEnabled" Change="ToggleBrowserPlayerAsync" Name="browserPlayer" />
+                    <RadzenLabel Text="@L["BrowserPlayer"]" Component="browserPlayer" />
+                </RadzenStack>
+                <RadzenDropDown TValue="string" Data="@CultureService.Supported.Select(s => new { s.Code, s.Name })" TextProperty="Name" ValueProperty="Code"
+                                Value="@CultureService.Current" Change="@(v => Culture.SetAsync((string)v))" title="@L["Language"]" />
+            </RadzenStack>
+        </RadzenStack>
     </RadzenSidebar>
 
     <RadzenBody>
         @if (_initialized && !Store.IsConnected)
         {
             <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">@L["Reconnecting"]</RadzenAlert>
+        }
+        @if (BrowserPlayer.NeedsInteraction)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap">
+                    <span>@L["AutoplayBlocked"]</span>
+                    <RadzenButton Icon="volume_up" Text="@L["AllowPlayback"]" Click="@BrowserPlayer.AllowPlaybackAsync" />
+                </RadzenStack>
+            </RadzenAlert>
+        }
+        @if (BrowserPlayer.WasReleased)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">@L["BrowserPlayerReleased"]</RadzenAlert>
         }
         <div class="rz-p-4">
             @Body
@@ -48,15 +95,57 @@
 @code {
     private bool _sidebarExpanded = true;
     private bool _initialized;
+    private bool _authenticated;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
+        _authenticated = (await AuthenticationState).User.Identity?.IsAuthenticated == true;
+        if (!_authenticated)
+        {
+            return;
+        }
+
         Store.Changed += OnChanged;
+        BrowserPlayer.Changed += OnChanged;
         await Store.InitializeAsync();
+        await BrowserPlayer.RestoreAsync();
         _initialized = true;
+    }
+
+    private async Task ToggleBrowserPlayerAsync(bool enabled)
+    {
+        if (enabled)
+        {
+            await BrowserPlayer.EnableAsync();
+            if (BrowserPlayer.PlayerId is { } id)
+            {
+                await Store.SelectPlayerAsync(id);
+            }
+        }
+        else
+        {
+            await BrowserPlayer.DisableAsync();
+        }
+    }
+
+    private async Task OnProfileMenuClick(RadzenProfileMenuItem item)
+    {
+        if (item.Value as string == "logout")
+        {
+            await BrowserPlayer.DisableAsync();
+            await Api.LogoutAsync();
+            Navigation.NavigateTo("login", forceLoad: true);
+        }
     }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Store.Changed -= OnChanged;
+    public void Dispose()
+    {
+        Store.Changed -= OnChanged;
+        BrowserPlayer.Changed -= OnChanged;
+    }
 }

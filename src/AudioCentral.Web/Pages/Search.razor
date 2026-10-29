@@ -44,8 +44,17 @@ else if (_result is not null)
     [SupplyParameterFromQuery(Name = "q")]
     public string? Query { get; set; }
 
+    private string? _searched;
+
     protected override async Task OnParametersSetAsync()
     {
+        // Parameters are also set when the layout re-renders; only search when the query changed.
+        if (Query == _searched)
+        {
+            return;
+        }
+
+        _searched = Query;
         _input = Query ?? "";
         _result = null;
         if (string.IsNullOrWhiteSpace(Query))

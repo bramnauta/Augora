@@ -3,7 +3,11 @@ using System.Security.Cryptography;
 
 namespace AudioCentral.Core.Streaming;
 
-public sealed record StreamSession(string Token, string PlayerId, ResolvedStream Stream, DateTimeOffset CreatedAt);
+public sealed record StreamSession(string Token, string PlayerId, ResolvedStream Stream, DateTimeOffset CreatedAt)
+{
+    /// <summary>Path of the stream endpoint, relative to the server root.</summary>
+    public string RelativePath => $"/api/stream/{Token}";
+}
 
 /// <summary>
 /// Hands out short-lived, unguessable stream urls. Players such as Google Cast cannot send

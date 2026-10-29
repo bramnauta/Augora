@@ -29,4 +29,9 @@ public static class ErrorCodes
     public const string ItemNotPlayable = "item_not_playable";
     public const string InvalidUri = "invalid_uri";
     public const string PlaybackFailed = "playback_failed";
+    public const string SetupCompleted = "setup_completed";
+    public const string LastAdmin = "last_admin";
+    public const string InvalidCredentials = "invalid_credentials";
+    public const string LockedOut = "locked_out";
+    public const string IdentityError = "identity_error";
 }

@@ -1,0 +1,20 @@
+@inject NavigationManager Navigation
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Logged in but not allowed (e.g. an admin page): go home instead of looping through the login page.
+        var state = AuthenticationState is null ? null : await AuthenticationState;
+        if (state?.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("");
+            return;
+        }
+
+        var returnUrl = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.NavigateTo($"login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+    }
+}

@@ -13,7 +13,7 @@
     }
     else
     {
-        <RadzenButton Icon="play_arrow" ButtonStyle="ButtonStyle.Primary" Disabled="@(!Player.Available || Player.State != PlaybackState.Paused)"
+        <RadzenButton Icon="play_arrow" ButtonStyle="ButtonStyle.Primary" Disabled="@(!Player.Available)"
                       Click="@(() => Run(() => Api.ResumeAsync(Player.Id)))" title="@L["Resume"]" />
     }
     <RadzenButton Icon="stop" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" Disabled="@(!Player.Available || Player.State == PlaybackState.Idle)"

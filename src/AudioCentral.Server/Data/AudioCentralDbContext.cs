@@ -1,3 +1,4 @@
+using AudioCentral.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -50,6 +51,7 @@ public sealed class AudioCentralDbContext(DbContextOptions<AudioCentralDbContext
             e.Property(a => a.Id).HasMaxLength(200);
             e.Property(a => a.DisplayName).HasMaxLength(200);
             e.Property(a => a.ClientId).HasMaxLength(100);
+            e.Property(a => a.Engine).HasConversion<string>().HasMaxLength(20);
             // A user's own accounts become shared when the user is deleted.
             e.HasOne<AppUser>().WithMany().HasForeignKey(a => a.OwnerUserId).OnDelete(DeleteBehavior.SetNull);
         });
@@ -112,6 +114,10 @@ public sealed class StoredSpotifyAccount
     public required string ProtectedRefreshToken { get; set; }
 
     public DateTimeOffset LinkedAt { get; set; }
+
+    public SpotifyEngine Engine { get; set; }
+
+    public string? ProtectedSoloistApiKey { get; set; }
 }
 
 public sealed class AppUser : IdentityUser

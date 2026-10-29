@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Sharpcaster;
 
 namespace AudioCentral.Players.GoogleCast;
 
@@ -87,23 +86,23 @@ public sealed class CastPlayerProvider(
             _logger.LogError(ex, "Loading manual Cast devices failed");
         }
 
+        foreach (var device in _options.Devices.Where(d => !string.IsNullOrWhiteSpace(d.Id) && !string.IsNullOrWhiteSpace(d.Host)))
+        {
+            AddOrUpdate(CastDevice.FromOptions(device));
+        }
+
         if (!_options.Discovery)
         {
             return;
         }
 
-        using var locator = new ChromecastLocator(loggerFactory.CreateLogger<ChromecastLocator>());
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var receivers = await locator.FindReceiversAsync(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8));
-                foreach (var receiver in receivers)
+                foreach (var device in await CastDiscovery.FindAsync(loggerFactory))
                 {
-                    if (CastDevice.FromDiscovery(receiver) is { } device)
-                    {
-                        AddOrUpdate(device);
-                    }
+                    AddOrUpdate(CastDevice.FromOptions(device));
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -130,7 +129,7 @@ public sealed class CastPlayerProvider(
             return;
         }
 
-        var player = new CastPlayer(device, _options.ReconnectInterval, loggerFactory);
+        var player = new CastPlayer(device, _options.ReconnectInterval, _options.ReceiverAppId, loggerFactory);
         if (_players.TryAdd(device.Id, player))
         {
             _logger.LogInformation("Found Cast {Kind} {Name} at {Host}:{Port}", device.Kind, device.Name, device.Host, device.Port);

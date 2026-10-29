@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AudioCentral.Server\AudioCentral.Server.csproj" />
+    <!-- Library only: finds the Cast devices on the host for the container profile. -->
+    <ProjectReference Include="..\AudioCentral.Players.GoogleCast\AudioCentral.Players.GoogleCast.csproj" IsAspireProjectResource="false" />
   </ItemGroup>
 
 </Project>

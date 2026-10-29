@@ -39,6 +39,9 @@ public static class ErrorCodes
     public const string SpotifyNoFreeAccount = "spotify_no_free_account";
     public const string SpotifyNotConfigured = "spotify_not_configured";
     public const string SpotifyAuthFailed = "spotify_auth_failed";
+
+    /// <summary>The account must first be approved for playback; the <c>pairing</c> extension holds a <see cref="SpotifyPairingDto"/>.</summary>
+    public const string SpotifyPairingRequired = "spotify_pairing_required";
     public const string Forbidden = "forbidden";
     public const string InvalidGroup = "invalid_group";
 }

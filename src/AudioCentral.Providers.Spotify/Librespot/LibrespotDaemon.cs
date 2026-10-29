@@ -47,11 +47,12 @@ internal sealed class LibrespotDaemon : IAsyncDisposable
     /// <summary>Raised for every websocket event.</summary>
     public event EventHandler<LibrespotEvent>? EventReceived;
 
-    public async Task StartAsync(string accessToken, CancellationToken cancellationToken)
+    /// <summary>Starts the process and waits for its API; the Spotify login may still be pending (see <see cref="GetLoginAsync"/>).</summary>
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(_directory);
         _port = GetFreePort();
-        await File.WriteAllTextAsync(Path.Combine(_directory, "config.yml"), BuildConfig(accessToken), cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_directory, "config.yml"), BuildConfig(), cancellationToken);
         _http.BaseAddress = new Uri($"http://127.0.0.1:{_port}/");
 
         Pipe.Start();
@@ -89,8 +90,7 @@ internal sealed class LibrespotDaemon : IAsyncDisposable
         }
         catch (HttpRequestException ex) when (!IsRunning)
         {
-            // The API listens before the Spotify login; a failed login ends the process shortly after.
-            throw new InvalidOperationException($"go-librespot stopped: {_lastError ?? "unknown error"}. Link the Spotify account again if the login was refused.", ex);
+            throw new InvalidOperationException($"go-librespot stopped: {_lastError ?? "unknown error"}.", ex);
         }
 
         using var _ = response;
@@ -128,7 +128,66 @@ internal sealed class LibrespotDaemon : IAsyncDisposable
         _stopping.Dispose();
     }
 
-    internal string BuildConfig(string accessToken) => $"""
+    /// <summary>
+    /// Waits up to <paramref name="wait"/> for the login: the Spotify username once logged in, or the pairing code
+    /// the user must approve at spotify.com/pair. <c>null</c> when neither is known yet.
+    /// </summary>
+    public async Task<LibrespotLogin?> GetLoginAsync(TimeSpan wait, CancellationToken cancellationToken)
+    {
+        var elapsed = Stopwatch.StartNew();
+        do
+        {
+            EnsureRunning();
+            try
+            {
+                using (var status = await _http.GetAsync("status", cancellationToken))
+                {
+                    if (status.StatusCode == HttpStatusCode.OK && Username(await status.Content.ReadAsByteArrayAsync(cancellationToken)) is { } username)
+                    {
+                        return new LibrespotLogin(username, null);
+                    }
+                }
+
+                using var code = await _http.GetAsync("auth/code", cancellationToken);
+                if (code.StatusCode == HttpStatusCode.OK
+                    && await code.Content.ReadFromJsonAsync(LibrespotJsonContext.Default.DeviceAuthCode, cancellationToken) is { } pairing)
+                {
+                    return new LibrespotLogin(null, pairing);
+                }
+            }
+            catch (HttpRequestException) when (!IsRunning)
+            {
+                EnsureRunning();
+            }
+
+            await Task.Delay(500, cancellationToken);
+        }
+        while (elapsed.Elapsed < wait);
+
+        return null;
+    }
+
+    /// <summary>Forgets the stored login, e.g. after pairing with the wrong Spotify account.</summary>
+    public void DeleteStoredLogin()
+    {
+        var state = Path.Combine(_directory, "state.json");
+        if (File.Exists(state))
+        {
+            File.Delete(state);
+        }
+    }
+
+    private void EnsureRunning()
+    {
+        if (_process is { HasExited: true } process)
+        {
+            throw new InvalidOperationException($"go-librespot exited with code {process.ExitCode}: {_lastError ?? "see the log"}.");
+        }
+    }
+
+    // go-librespot logs in itself: Spotify only accepts login tokens issued to librespot's own client id, not to the
+    // app used for the Web API. The user approves the device once at spotify.com/pair; state.json keeps the login.
+    internal string BuildConfig() => $"""
         log_level: info
         device_name: {Yaml($"AudioCentral ({_account.DisplayName})")}
         device_type: speaker
@@ -147,44 +206,20 @@ internal sealed class LibrespotDaemon : IAsyncDisposable
           address: 127.0.0.1
           port: {_port}
         credentials:
-          type: spotify_token
-          spotify_token:
-            username: {Yaml(_account.Id)}
-            access_token: {Yaml(accessToken)}
+          type: device_auth
         """;
 
-    /// <summary>
-    /// Waits until the API answers and the Spotify login succeeded (the status names the user). The API listens before
-    /// the login, which go-librespot retries for a few seconds before it exits.
-    /// </summary>
+    /// <summary>Waits until the API answers; the login itself can wait for the user's approval.</summary>
     private async Task WaitUntilReadyAsync(CancellationToken cancellationToken)
     {
         var elapsed = Stopwatch.StartNew();
-        TimeSpan? listeningSince = null;
         while (elapsed.Elapsed < StartTimeout)
         {
-            if (_process!.HasExited)
-            {
-                throw new InvalidOperationException($"go-librespot exited with code {_process.ExitCode}: {_lastError ?? "see the log"}.");
-            }
-
+            EnsureRunning();
             try
             {
                 using var response = await _http.GetAsync("status", cancellationToken);
-                if (response.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent)
-                {
-                    listeningSince ??= elapsed.Elapsed;
-                    if (response.StatusCode == HttpStatusCode.OK && HasUsername(await response.Content.ReadAsByteArrayAsync(cancellationToken)))
-                    {
-                        return;
-                    }
-
-                    // Without an active session the status is empty; give the login time to fail before assuming it worked.
-                    if (elapsed.Elapsed - listeningSince > TimeSpan.FromSeconds(8))
-                    {
-                        return;
-                    }
-                }
+                return;
             }
             catch (HttpRequestException)
             {
@@ -197,16 +232,16 @@ internal sealed class LibrespotDaemon : IAsyncDisposable
         throw new InvalidOperationException("go-librespot did not become ready in time.");
     }
 
-    private static bool HasUsername(byte[] json)
+    internal static string? Username(byte[] json)
     {
         try
         {
             using var document = JsonDocument.Parse(json);
-            return document.RootElement.TryGetProperty("username", out var username) && !string.IsNullOrEmpty(username.GetString());
+            return document.RootElement.TryGetProperty("username", out var username) && username.GetString() is { Length: > 0 } name ? name : null;
         }
         catch (JsonException)
         {
-            return false;
+            return null;
         }
     }
 
@@ -328,5 +363,15 @@ internal sealed class LibrespotDaemon : IAsyncDisposable
 
 internal sealed record PlayBody([property: System.Text.Json.Serialization.JsonPropertyName("uri")] string Uri);
 
+/// <summary>A pending device authorisation (<c>GET /auth/code</c>).</summary>
+internal sealed record DeviceAuthCode(
+    [property: System.Text.Json.Serialization.JsonPropertyName("url")] string Url,
+    [property: System.Text.Json.Serialization.JsonPropertyName("code")] string Code,
+    [property: System.Text.Json.Serialization.JsonPropertyName("expires_at")] DateTimeOffset ExpiresAt);
+
+/// <summary>Logged in as <paramref name="Username"/>, or waiting for the user to approve <paramref name="Pairing"/>.</summary>
+internal sealed record LibrespotLogin(string? Username, DeviceAuthCode? Pairing);
+
 [System.Text.Json.Serialization.JsonSerializable(typeof(PlayBody))]
+[System.Text.Json.Serialization.JsonSerializable(typeof(DeviceAuthCode))]
 internal sealed partial class LibrespotJsonContext : System.Text.Json.Serialization.JsonSerializerContext;

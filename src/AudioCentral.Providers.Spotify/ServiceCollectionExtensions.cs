@@ -1,6 +1,7 @@
 using AudioCentral.Core.Players;
 using AudioCentral.Core.Providers;
 using AudioCentral.Providers.Spotify.Librespot;
+using AudioCentral.Providers.Spotify.Soloist;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -28,10 +29,16 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<IOptions<SpotifyOptions>>().Value.AccountHoldTime));
         services.AddSingleton<LibrespotManager>();
+
+        // Spotify Soloist is downloaded from Spotify on first use (only after the user chose it for an account).
+        services.AddHttpClient(SoloistManager.DownloadClientName, client => client.Timeout = TimeSpan.FromMinutes(5));
+        services.AddSingleton<SoloistManager>();
+
         services.AddSingleton(sp => new SpotifyProvider(
             sp.GetRequiredService<SpotifyAccountService>(),
             sp.GetRequiredService<SpotifyAccountPool>(),
             sp.GetRequiredService<LibrespotManager>(),
+            sp.GetRequiredService<SoloistManager>(),
             sp.GetRequiredService<PlayerManager>(),
             sp.GetRequiredService<ICurrentUser>(),
             sp.GetRequiredService<IHttpClientFactory>(),

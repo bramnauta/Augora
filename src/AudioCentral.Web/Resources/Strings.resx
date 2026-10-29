@@ -132,6 +132,21 @@
   <data name="LocalLibraryStatus" xml:space="preserve"><value>{0} nummers in de index.</value></data>
   <data name="Rescan" xml:space="preserve"><value>Nu scannen</value></data>
   <data name="RescanStarted" xml:space="preserve"><value>Scan gestart</value></data>
+  <data name="SpotifyPairTitle" xml:space="preserve"><value>Afspelen goedkeuren</value></data>
+  <data name="SpotifyPairText" xml:space="preserve"><value>De audio-engine van AudioCentral logt apart in bij Spotify. Keur hem één keer goed met hetzelfde Spotify-account ({0}): open de link, log in en bevestig. Vraagt Spotify om een code, vul dan deze in:</value></data>
+  <data name="SpotifyPairOpen" xml:space="preserve"><value>Open spotify.com/pair</value></data>
+  <data name="SpotifyPairDone" xml:space="preserve"><value>Ik heb het goedgekeurd</value></data>
+  <data name="SpotifyPairPending" xml:space="preserve"><value>Nog niet goedgekeurd. Rond het af in het geopende tabblad en probeer het opnieuw.</value></data>
+  <data name="SpotifyPairButton" xml:space="preserve"><value>Afspelen koppelen</value></data>
+  <data name="SpotifyPaired" xml:space="preserve"><value>Afspelen is gekoppeld</value></data>
+  <data name="SpotifyPairConnectText" xml:space="preserve"><value>De audio-engine logt apart in bij Spotify. Open de Spotify-app op een apparaat in hetzelfde netwerk, ingelogd als {0}, tik op het luidspreker-icoon en kies dit apparaat:</value></data>
+  <data name="SpotifyEngine" xml:space="preserve"><value>Afspeel-engine</value></data>
+  <data name="SoloistIntro" xml:space="preserve"><value>Spotify Soloist is Spotify's eigen client zonder scherm. Hij werkt met alle Premium-accounts, ook als go-librespot de nummers niet mag afspelen. AudioCentral downloadt hem voor je van Spotify en houdt hem bij; hij verloopt elke 90 dagen.</value></data>
+  <data name="SoloistTerms" xml:space="preserve"><value>Spotify verbiedt het meeleveren van Soloist, en de voorwaarden van Spotify staan dit gebruik niet duidelijk toe. Je gebruikt het op eigen risico.</value></data>
+  <data name="SoloistKeyHelp" xml:space="preserve"><value>Maak met dit Spotify-account (Premium) een API-key aan op</value></data>
+  <data name="SoloistApiKey" xml:space="preserve"><value>Soloist-API-key</value></data>
+  <data name="SoloistKeyKeep" xml:space="preserve"><value>Leeg laten om de opgeslagen key te houden</value></data>
+  <data name="SoloistAccept" xml:space="preserve"><value>Ik ga ermee akkoord dat AudioCentral Spotify Soloist voor mij downloadt en gebruikt, op eigen risico</value></data>
   <data name="Nav_Groups" xml:space="preserve"><value>Groepen</value></data>
   <data name="GroupsHelp" xml:space="preserve"><value>Een groep speelt hetzelfde op spelers van elk type tegelijk (Cast, browser, telefoon, TV) en verschijnt als eigen speler. Ze starten samen, maar elk apparaat buffert anders: verwacht kleine verschillen. Voor alleen Google Home-speakers is een Cast-groep uit de Google Home-app strakker synchroon.</value></data>
   <data name="GroupNew" xml:space="preserve"><value>Nieuwe groep</value></data>

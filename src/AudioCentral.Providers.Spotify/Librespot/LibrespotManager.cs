@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using AudioCentral.Contracts;
 using AudioCentral.Core;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,6 @@ namespace AudioCentral.Providers.Spotify.Librespot;
 /// Starts a go-librespot daemon per account on first use and turns its PCM output into an encoded stream per track.
 /// </summary>
 internal sealed class LibrespotManager(
-    SpotifyAccountService accounts,
     IOptions<SpotifyOptions> options,
     IOptions<AudioCentralOptions> coreOptions,
     IHostEnvironment environment,
@@ -53,7 +53,7 @@ internal sealed class LibrespotManager(
             var daemon = new LibrespotDaemon(account, directory, _options, loggerFactory.CreateLogger<LibrespotDaemon>());
             try
             {
-                await daemon.StartAsync(await accounts.GetAccessTokenAsync(account, cancellationToken), cancellationToken);
+                await daemon.StartAsync(cancellationToken);
             }
             catch
             {
@@ -68,6 +68,49 @@ internal sealed class LibrespotManager(
         {
             gate.Release();
         }
+    }
+
+    /// <summary>
+    /// The playback login of <paramref name="account"/>: paired, or the code to approve. A login with another Spotify
+    /// account than the linked one is discarded, so the next attempt pairs again.
+    /// </summary>
+    public async Task<SpotifyPairingDto> GetPairingAsync(SpotifyAccount account, CancellationToken cancellationToken)
+    {
+        var daemon = await GetDaemonAsync(account, cancellationToken);
+        var login = await daemon.GetLoginAsync(TimeSpan.FromSeconds(15), cancellationToken)
+            ?? throw new InvalidOperationException("go-librespot neither logged in nor offered a pairing code in time.");
+
+        if (login.Username is { } username)
+        {
+            if (!username.Equals(account.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("go-librespot for {Account} logged in as {Username}; discarding that login", account.Id, username);
+                await RemoveAsync(account.Id);
+                daemon.DeleteStoredLogin();
+                throw new AudioCentralException(ErrorCodes.SpotifyAuthFailed,
+                    $"Playback was approved with Spotify account '{username}' instead of '{account.Id}'. Try again with the right account.", 409);
+            }
+
+            return new SpotifyPairingDto(account.Id, account.DisplayName, true, null, null, null);
+        }
+
+        var pairing = login.Pairing!;
+        return new SpotifyPairingDto(account.Id, account.DisplayName, false, pairing.Url, pairing.Code, pairing.ExpiresAt);
+    }
+
+    /// <summary>A logged-in daemon, or <see cref="ErrorCodes.SpotifyPairingRequired"/> with the code to approve.</summary>
+    public async Task<LibrespotDaemon> GetLoggedInDaemonAsync(SpotifyAccount account, CancellationToken cancellationToken)
+    {
+        var pairing = await GetPairingAsync(account, cancellationToken);
+        if (!pairing.Paired)
+        {
+            var error = new AudioCentralException(ErrorCodes.SpotifyPairingRequired,
+                $"Approve playback for Spotify account '{account.DisplayName}' once at {pairing.Url} (code {pairing.Code}).", 409);
+            error.Extensions["pairing"] = pairing;
+            throw error;
+        }
+
+        return await GetDaemonAsync(account, cancellationToken);
     }
 
     public async Task RemoveAsync(string accountId)
@@ -108,6 +151,8 @@ internal sealed class LibrespotManager(
                 var finishing = ended.Task.IsCompleted || received >= expected;
                 using var idle = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 idle.CancelAfter(finishing ? EndIdle : StallIdle);
+                // An end or error event must not wait for the stall timeout: a refused track has no audio at all.
+                using var onEnded = finishing ? default : ended.Task.ContinueWith(_ => CancelQuietly(idle), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
                 try
                 {
                     if (!await reader.WaitToReadAsync(idle.Token))
@@ -117,6 +162,17 @@ internal sealed class LibrespotManager(
                 }
                 catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
+                    if (!finishing && ended.Task.IsCompleted)
+                    {
+                        if (received == 0 && ended.Task.Result.Type == "playback_error")
+                        {
+                            break;
+                        }
+
+                        // Drain what is still in the pipe with the short idle timeout.
+                        continue;
+                    }
+
                     if (!finishing)
                     {
                         _logger.LogWarning("No audio from go-librespot for {Uri} for {Seconds}s; ending the track", uri, StallIdle.TotalSeconds);
@@ -169,6 +225,18 @@ internal sealed class LibrespotManager(
         }
 
         _daemons.Clear();
+    }
+
+    private static void CancelQuietly(CancellationTokenSource source)
+    {
+        try
+        {
+            source.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // The wait already finished.
+        }
     }
 
     private Process StartEncoder()

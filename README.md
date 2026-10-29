@@ -44,6 +44,25 @@ en `ffmpeg` op het PATH staan (of stel `Providers__Spotify__LibrespotPath` / `__
 Spotify geeft apps sinds februari 2026 alleen de inhoud van playlists die je zelf bezit of waaraan je
 meewerkt; gevolgde playlists zijn daardoor niet af te spelen.
 
+### Afspeel-engine per account
+
+| Engine | Koppelen | Opmerkingen |
+|---|---|---|
+| go-librespot (standaard) | Eenmalig een code goedkeuren op spotify.com/pair | Zit in de image. Spotify weigert voor veel (nieuwere) accounts de sleutel van nummers: `failed retrieving aes key`. |
+| Spotify Soloist | Eenmalig in de Spotify-app het apparaat "AudioCentral (naam)" kiezen, op hetzelfde netwerk | Spotify's eigen client; werkt met alle Premium-accounts. Kies hem onder **Spotify** → het instellingen-icoon bij een account. |
+
+Over Soloist:
+
+- Spotify verbiedt het meeleveren ervan. AudioCentral downloadt hem pas nadat je dat per account hebt
+  goedgekeurd, van `soloist-builds.spotifycdn.com`, en vervangt hem voordat hij na 90 dagen verloopt.
+  De voorwaarden van Spotify staan dit gebruik niet duidelijk toe: op eigen risico.
+- Je hebt een API-key nodig van [developer.spotify.com/dashboard/soloist](https://developer.spotify.com/dashboard/soloist),
+  aangemaakt met hetzelfde Premium-account.
+- Soloist speelt alleen af via PulseAudio of PipeWire. In de container draait AudioCentral daarom een eigen
+  PulseAudio-daemon met een virtuele uitgang per account, en ffmpeg neemt die op.
+- Koppelen gaat via Spotify Connect (mDNS). Dat werkt in de Home Assistant-app en met macvlan, maar niet
+  in Docker Desktop.
+
 ## Android-app
 
 `src/AudioCentral.Android` (C#, .NET for Android, Android 8.0+, ook Android TV). Bouwen en installeren
@@ -93,6 +112,20 @@ dotnet run --project src/AudioCentral.AppHost
 Het Aspire-dashboard opent; de UI staat onder de `server`-resource. Cast-apparaten halen audio
 op via poort **8097** op alle interfaces: sta die toe in de firewall.
 
+Spotify-audio (go-librespot) werkt alleen onder Linux. Om dat lokaal te testen start Aspire de server
+als container uit de `Dockerfile`:
+
+```bash
+dotnet run --project src/AudioCentral.AppHost --launch-profile container
+```
+
+De UI staat dan op `http://127.0.0.1:4727`. Gebruik dat adres, niet `localhost`, als redirect-URI bij
+Spotify (`http://127.0.0.1:4727/api/spotify/callback`). Speakers halen de stream op via poort 4727 op
+het LAN-IP van je pc. Docker Desktop laat mDNS niet door; daarom zoekt de AppHost de speakers en
+groepen bij het starten op Windows en geeft ze door aan de container (`Players__GoogleCast__Devices`).
+Nieuwe speakers of gewijzigde groepspoorten verschijnen na een herstart van de AppHost.
+Data staat in het Docker-volume `audiocentral-dev-data`.
+
 Tests:
 
 ```bash
@@ -138,6 +171,8 @@ Belangrijke instellingen (omgevingsvariabelen):
 | `Providers__LocalFiles__Folders__0__Name` / `__Path` | Muziekmap, bijv. `Muziek` en `/music` (koppel je NAS-share als volume). Meer mappen met `__1__`, `__2__`, ... De naam zit in elke item-id: houd hem stabiel. |
 | `Providers__LocalFiles__RescanInterval` | Hoe vaak de mappen opnieuw gescand worden (standaard `06:00:00`); beheerders kunnen onder Instellingen direct scannen. |
 | `Players__GoogleCast__Discovery` | `false` om mDNS uit te zetten (alleen handmatige apparaten). |
+| `Players__GoogleCast__ReceiverAppId` | Eigen Cast-receiver, zodat speakers "AudioCentral" tonen in plaats van "Default Media Receiver". Registreer in de [Google Cast SDK Developer Console](https://cast.google.com/publish) een *Styled Media Receiver* met die naam en publiceer hem. |
+| `Providers__Spotify__SoloistPreroll` | Stilte die aan het begin van een Soloist-nummer in één keer wordt verstuurd, zodat speakers sneller starten (standaard `00:00:03`; `00:00:00` = uit). |
 | `Authentication__Oidc__Authority` | Issuer-URL van je OIDC-provider; leeg = geen SSO. Redirect-URI: `https://<host>/signin-oidc`. |
 | `Authentication__Oidc__ClientId` / `__ClientSecret` | Client-gegevens bij de OIDC-provider. |
 | `Authentication__Oidc__DisplayName` | Tekst op de inlogknop, bijv. `Authentik`. |

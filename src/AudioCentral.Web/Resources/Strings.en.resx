@@ -132,6 +132,21 @@
   <data name="LocalLibraryStatus" xml:space="preserve"><value>{0} tracks in the index.</value></data>
   <data name="Rescan" xml:space="preserve"><value>Scan now</value></data>
   <data name="RescanStarted" xml:space="preserve"><value>Scan started</value></data>
+  <data name="SpotifyPairTitle" xml:space="preserve"><value>Approve playback</value></data>
+  <data name="SpotifyPairText" xml:space="preserve"><value>AudioCentral's audio engine logs in to Spotify separately. Approve it once with the same Spotify account ({0}): open the link, log in and confirm. If Spotify asks for a code, enter this one:</value></data>
+  <data name="SpotifyPairOpen" xml:space="preserve"><value>Open spotify.com/pair</value></data>
+  <data name="SpotifyPairDone" xml:space="preserve"><value>I approved it</value></data>
+  <data name="SpotifyPairPending" xml:space="preserve"><value>Not approved yet. Finish it in the opened tab and try again.</value></data>
+  <data name="SpotifyPairButton" xml:space="preserve"><value>Pair playback</value></data>
+  <data name="SpotifyPaired" xml:space="preserve"><value>Playback is paired</value></data>
+  <data name="SpotifyPairConnectText" xml:space="preserve"><value>The audio engine logs in to Spotify separately. Open the Spotify app on a device in the same network, logged in as {0}, tap the speaker icon and choose this device:</value></data>
+  <data name="SpotifyEngine" xml:space="preserve"><value>Playback engine</value></data>
+  <data name="SoloistIntro" xml:space="preserve"><value>Spotify Soloist is Spotify's own headless client. It works with all Premium accounts, also when go-librespot may not play their tracks. AudioCentral downloads it from Spotify for you and keeps it current; it expires every 90 days.</value></data>
+  <data name="SoloistTerms" xml:space="preserve"><value>Spotify does not allow redistributing Soloist, and Spotify's terms do not clearly allow this use. You use it at your own risk.</value></data>
+  <data name="SoloistKeyHelp" xml:space="preserve"><value>Create an API key with this Spotify account (Premium) at</value></data>
+  <data name="SoloistApiKey" xml:space="preserve"><value>Soloist API key</value></data>
+  <data name="SoloistKeyKeep" xml:space="preserve"><value>Leave empty to keep the stored key</value></data>
+  <data name="SoloistAccept" xml:space="preserve"><value>I agree that AudioCentral downloads and uses Spotify Soloist for me, at my own risk</value></data>
   <data name="Nav_Groups" xml:space="preserve"><value>Groups</value></data>
   <data name="GroupsHelp" xml:space="preserve"><value>A group plays the same on players of any kind at once (Cast, browser, phone, TV) and shows up as a player of its own. They start together, but every device buffers differently: expect small differences. For Google Home speakers only, a Cast group from the Google Home app is more tightly synchronised.</value></data>
   <data name="GroupNew" xml:space="preserve"><value>New group</value></data>

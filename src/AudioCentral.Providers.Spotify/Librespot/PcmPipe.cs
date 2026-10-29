@@ -35,18 +35,20 @@ internal sealed class PcmPipe : IDisposable
             return new PcmPipe($@"\\.\pipe\audiocentral-{name}", logger);
         }
 
+        Directory.CreateDirectory(directory);
         var path = System.IO.Path.Combine(directory, "audio.pcm");
         if (File.Exists(path))
         {
             File.Delete(path);
         }
 
-        using var mkfifo = Process.Start(new ProcessStartInfo("mkfifo", [path]) { UseShellExecute = false })
+        using var mkfifo = Process.Start(new ProcessStartInfo("mkfifo", [path]) { UseShellExecute = false, RedirectStandardError = true })
             ?? throw new InvalidOperationException("Could not start mkfifo.");
+        var error = mkfifo.StandardError.ReadToEnd();
         mkfifo.WaitForExit();
         if (mkfifo.ExitCode != 0)
         {
-            throw new InvalidOperationException($"mkfifo failed for '{path}'.");
+            throw new InvalidOperationException($"mkfifo failed for '{path}': {error.Trim()}");
         }
 
         return new PcmPipe(path, logger);

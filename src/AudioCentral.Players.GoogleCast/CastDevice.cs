@@ -29,8 +29,15 @@ internal sealed record CastDevice(string Id, string Name, string Host, int Port,
                 : PlayerKind.Speaker;
 
         var name = txt.TryGetValue("fn", out var friendlyName) && !string.IsNullOrWhiteSpace(friendlyName) ? friendlyName : receiver.Name;
-        return new CastDevice($"cast:{id.Replace("-", "", StringComparison.Ordinal).ToLowerInvariant()}", name, receiver.DeviceUri.Host, receiver.Port, kind, model);
+        return new CastDevice(PlayerId(id), name, receiver.DeviceUri.Host, receiver.Port, kind, model);
     }
+
+    public static CastDevice FromOptions(CastDeviceOptions device) =>
+        new(PlayerId(device.Id), device.Name, device.Host, device.Port, device.Kind, device.Model);
+
+    public CastDeviceOptions ToOptions() => new(Id["cast:".Length..], Name, Host, Port, Kind, Model);
+
+    private static string PlayerId(string castId) => $"cast:{castId.Replace("-", "", StringComparison.Ordinal).ToLowerInvariant()}";
 
     public static CastDevice FromManual(ManualCastDeviceDto device) =>
         new($"cast:manual-{device.Id:N}", device.Name, device.Host, device.Port, device.Port == 8009 ? PlayerKind.Speaker : PlayerKind.DeviceGroup, null);

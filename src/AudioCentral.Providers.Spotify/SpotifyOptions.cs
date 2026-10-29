@@ -24,4 +24,10 @@ public sealed class SpotifyOptions
     /// How long an account stays reserved for a player after its last track ended, so the next queue item can use it.
     /// </summary>
     public TimeSpan AccountHoldTime { get; set; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Silence sent at once at the start of a Soloist track, so Cast devices start playing without waiting for their
+    /// buffer to fill in real time. Shorter means less silence but a later start; zero turns it off.
+    /// </summary>
+    public TimeSpan SoloistPreroll { get; set; } = TimeSpan.FromSeconds(3);
 }

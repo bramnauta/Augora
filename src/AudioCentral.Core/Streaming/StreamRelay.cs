@@ -64,13 +64,75 @@ public sealed class StreamRelay(IHttpClientFactory httpClientFactory, ILogger<St
         }
 
         logger.LogInformation("Producing {ContentType} stream for player {Player}", produced.ContentType, session.PlayerId);
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var body = new FirstWriteStream(response.Body, () =>
+            logger.LogInformation("First audio to player {Player} after {Milliseconds} ms", session.PlayerId, started.ElapsedMilliseconds));
         try
         {
-            await produced.WriteAsync(response.Body, context.RequestAborted);
+            await produced.WriteAsync(body, context.RequestAborted);
         }
         catch (Exception ex) when (ex is OperationCanceledException or IOException && context.RequestAborted.IsCancellationRequested)
         {
             logger.LogDebug("Player {Player} closed the produced stream", session.PlayerId);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or AudioCentralException)
+        {
+            // Ending the response tells the player the item failed; its queue moves on or stops.
+            logger.LogWarning("Producing the stream for player {Player} failed: {Message}", session.PlayerId, ex.Message);
+            if (!response.HasStarted)
+            {
+                response.StatusCode = StatusCodes.Status502BadGateway;
+            }
+        }
+    }
+
+    /// <summary>Passes writes through and reports the first one: how long a producer took to deliver audio.</summary>
+    private sealed class FirstWriteStream(Stream inner, Action onFirstWrite) : Stream
+    {
+        private Action? _onFirstWrite = onFirstWrite;
+
+        public override bool CanRead => false;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() => inner.Flush();
+
+        public override Task FlushAsync(CancellationToken cancellationToken) => inner.FlushAsync(cancellationToken);
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            Report(count);
+            inner.Write(buffer, offset, count);
+        }
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            Report(buffer.Length);
+            return inner.WriteAsync(buffer, cancellationToken);
+        }
+
+        private void Report(int count)
+        {
+            if (count > 0 && Interlocked.Exchange(ref _onFirstWrite, null) is { } report)
+            {
+                report();
+            }
         }
     }
 

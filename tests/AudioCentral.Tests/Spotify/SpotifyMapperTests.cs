@@ -70,6 +70,19 @@ public sealed class SpotifyMapperTests
     }
 
     [Fact]
+    public void The_pairing_code_and_the_logged_in_user_are_read()
+    {
+        const string code = """{"url":"https://spotify.com/pair?code=TD23RP","code":"TD23RP","expires_at":"2026-10-29T21:46:34Z"}""";
+
+        var pairing = JsonSerializer.Deserialize(code, LibrespotJsonContext.Default.DeviceAuthCode)!;
+
+        Assert.Equal("TD23RP", pairing.Code);
+        Assert.Equal(new DateTimeOffset(2026, 10, 29, 21, 46, 34, TimeSpan.Zero), pairing.ExpiresAt);
+        Assert.Equal("bramnauta", LibrespotDaemon.Username(Encoding.UTF8.GetBytes("""{"username":"bramnauta","stopped":true}""")));
+        Assert.Null(LibrespotDaemon.Username(Encoding.UTF8.GetBytes("""{"username":""}""")));
+    }
+
+    [Fact]
     public void Invalid_librespot_events_are_ignored() =>
         Assert.Null(LibrespotDaemon.ParseEvent(Encoding.UTF8.GetBytes("not json")));
 }

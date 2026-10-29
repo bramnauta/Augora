@@ -48,8 +48,9 @@ public sealed class ApiClient(HttpClient http)
 
     public Task<SearchResultDto> SearchAsync(string query) => GetAsync<SearchResultDto>($"api/search?q={Uri.EscapeDataString(query)}");
 
-    public Task<QueueDto> PlayAsync(string playerId, string uri, QueueOption option = QueueOption.Replace, string? takeoverPlayerId = null) =>
-        SendAsync<QueueDto>(HttpMethod.Post, $"api/players/{Escape(playerId)}/play", new PlayRequest(uri, option, takeoverPlayerId));
+    public Task<QueueDto> PlayAsync(
+        string playerId, string uri, QueueOption option = QueueOption.Replace, string? takeoverPlayerId = null, IReadOnlyList<string>? following = null) =>
+        SendAsync<QueueDto>(HttpMethod.Post, $"api/players/{Escape(playerId)}/play", new PlayRequest(uri, option, takeoverPlayerId, following));
 
     public Task<SpotifyStatusDto> GetSpotifyAsync() => GetAsync<SpotifyStatusDto>("api/spotify");
 
@@ -78,6 +79,12 @@ public sealed class ApiClient(HttpClient http)
     public Task<LocalLibraryStatusDto> GetLocalLibraryAsync() => GetAsync<LocalLibraryStatusDto>("api/local");
 
     public Task RescanLocalLibraryAsync() => SendAsync(HttpMethod.Post, "api/local/rescan");
+
+    public Task<SpotifyEngine> SetSpotifyEngineAsync(string accountId, SetSpotifyEngineRequest request) =>
+        SendAsync<SpotifyEngine>(HttpMethod.Put, $"api/spotify/accounts/{Escape(accountId)}/engine", request);
+
+    public Task<SpotifyPairingDto> GetSpotifyPairingAsync(string accountId) =>
+        SendAsync<SpotifyPairingDto>(HttpMethod.Post, $"api/spotify/accounts/{Escape(accountId)}/pairing");
 
     public Task RemoveSpotifyAccountAsync(string id) => SendAsync(HttpMethod.Delete, $"api/spotify/accounts/{Escape(id)}");
 

@@ -43,7 +43,8 @@ internal sealed class EfSpotifyAccountStore(IDbContextFactory<AudioCentralDbCont
         // SQLite cannot order by DateTimeOffset; there are only a handful of accounts.
         return stored
             .OrderBy(a => a.LinkedAt)
-            .Select(a => new SpotifyAccount(a.Id, a.DisplayName, a.OwnerUserId, a.ClientId, _protector.Unprotect(a.ProtectedRefreshToken)))
+            .Select(a => new SpotifyAccount(a.Id, a.DisplayName, a.OwnerUserId, a.ClientId, _protector.Unprotect(a.ProtectedRefreshToken),
+                a.Engine, a.ProtectedSoloistApiKey is null ? null : _protector.Unprotect(a.ProtectedSoloistApiKey)))
             .ToList();
     }
 
@@ -67,6 +68,8 @@ internal sealed class EfSpotifyAccountStore(IDbContextFactory<AudioCentralDbCont
         stored.OwnerUserId = account.OwnerUserId;
         stored.ClientId = account.ClientId;
         stored.ProtectedRefreshToken = _protector.Protect(account.RefreshToken);
+        stored.Engine = account.Engine;
+        stored.ProtectedSoloistApiKey = account.SoloistApiKey is null ? null : _protector.Protect(account.SoloistApiKey);
         await db.SaveChangesAsync(cancellationToken);
     }
 

@@ -1,0 +1,57 @@
+@inject ApiClient Api
+@inject DialogService Dialogs
+@inject IStringLocalizer<Strings> L
+
+@* Switches an account to Spotify Soloist: needs the owner's API key and consent. Closes with true when saved. *@
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.Body1">@L["SoloistIntro"]</RadzenText>
+    <RadzenAlert AlertStyle="AlertStyle.Warning" AllowClose="false" Shade="Shade.Lighter">@L["SoloistTerms"]</RadzenAlert>
+    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">
+        @L["SoloistKeyHelp"]
+        <a href="https://developer.spotify.com/dashboard/soloist" target="_blank" rel="noopener">developer.spotify.com/dashboard/soloist</a>
+    </RadzenText>
+    <RadzenFormField Text="@L["SoloistApiKey"]">
+        <RadzenPassword @bind-Value="_apiKey" Placeholder="@(Account.Engine == SpotifyEngine.Soloist ? L["SoloistKeyKeep"] : "")" />
+    </RadzenFormField>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0.5rem">
+        <RadzenCheckBox @bind-Value="_accept" Name="acceptSoloist" />
+        <RadzenLabel Text="@L["SoloistAccept"]" Component="acceptSoloist" />
+    </RadzenStack>
+    @if (_error is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" AllowClose="false" Shade="Shade.Lighter">@_error</RadzenAlert>
+    }
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Text="@L["Cancel"]" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="@(() => Dialogs.Close(false))" />
+        <RadzenButton Text="@L["Save"]" IsBusy="_saving" Disabled="@(!_accept || (string.IsNullOrWhiteSpace(_apiKey) && Account.Engine != SpotifyEngine.Soloist))" Click="SaveAsync" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public SpotifyAccountDto Account { get; set; } = default!;
+
+    private string? _apiKey;
+    private bool _accept;
+    private bool _saving;
+    private string? _error;
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            await Api.SetSpotifyEngineAsync(Account.Id, new SetSpotifyEngineRequest(SpotifyEngine.Soloist, _apiKey, _accept));
+            Dialogs.Close(true);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

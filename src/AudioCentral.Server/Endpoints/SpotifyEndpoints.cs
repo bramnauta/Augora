@@ -36,7 +36,7 @@ internal static class SpotifyEndpoints
                 var playerId = holders.GetValueOrDefault(a.Id);
                 var playerName = playerId is null ? null : players.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? playerId;
                 return new SpotifyAccountDto(a.Id, a.DisplayName, a.Id, a.OwnerUserId,
-                    a.OwnerUserId is null ? null : names.GetValueOrDefault(a.OwnerUserId), a.ClientId is not null, playerId, playerName, accounts.GetError(a.Id));
+                    a.OwnerUserId is null ? null : names.GetValueOrDefault(a.OwnerUserId), a.ClientId is not null, playerId, playerName, accounts.GetError(a.Id), a.Engine);
             }).ToList();
             return new SpotifyStatusDto(true, accounts.HasDefaultClientId, RedirectUri(context, options.Value).ToString(), list);
         }).WithSummary("Linked Spotify accounts and which player streams with each.");
@@ -99,6 +99,34 @@ internal static class SpotifyEndpoints
             await provider.RemoveAccountAsync(account.Id, ct);
             return TypedResults.NoContent();
         }).WithSummary("Unlink a Spotify account (your own, or any as administrator).");
+
+        spotify.MapPut("/accounts/{id}/engine", async Task<Results<Ok<SpotifyEngine>, NotFound, ProblemHttpResult>> (
+            string id,
+            SetSpotifyEngineRequest request,
+            ClaimsPrincipal principal,
+            UserManager<AppUser> users,
+            [FromServices] SpotifyAccountService accounts,
+            [FromServices] SpotifyProvider provider,
+            CancellationToken ct) =>
+        {
+            if (await accounts.GetAccountAsync(id, ct) is not { } account)
+            {
+                return TypedResults.NotFound();
+            }
+
+            if (!principal.IsInRole(Roles.Admin) && account.OwnerUserId != users.GetUserId(principal))
+            {
+                return AuthEndpoints.Problem(ErrorCodes.Forbidden, "You can only change your own Spotify accounts.", StatusCodes.Status403Forbidden);
+            }
+
+            return TypedResults.Ok(await provider.SetEngineAsync(account.Id, request, ct));
+        }).WithSummary("Choose the playback engine of an account: go-librespot (bundled) or Spotify Soloist (downloaded from Spotify).");
+
+        spotify.MapPost("/accounts/{id}/pairing", (string id, [FromServices] SpotifyProvider provider, CancellationToken ct) =>
+                provider.GetPairingAsync(id, ct))
+            .WithSummary("Start or check the playback approval of an account.")
+            .WithDescription("Spotify's audio engine logs in on its own. When paired is false, open url (spotify.com/pair) "
+                + "with the same Spotify account and approve; call again to check.");
 
         return app;
     }

@@ -63,15 +63,29 @@
             return;
         }
 
+        // "Play from here": a track played from an album or playlist brings the tracks after it, so playback continues.
+        IReadOnlyList<string>? following = option is QueueOption.Replace && item.Type is MediaType.Track or MediaType.Episode
+            ? Items.SkipWhile(i => i.Uri != item.Uri).Skip(1).Where(i => i.IsPlayable && !i.IsBrowsable).Select(i => i.Uri).ToList()
+            : null;
+
         string? takeover = null;
         while (true)
         {
             try
             {
-                await Api.PlayAsync(player.Id, item.Uri, option, takeover);
+                await Api.PlayAsync(player.Id, item.Uri, option, takeover, following);
                 var message = option is QueueOption.Replace or QueueOption.Play ? L["PlayingOn", player.Name] : L["Added", player.Name];
                 Notifications.Notify(NotificationSeverity.Success, message, item.Name, duration: 2500);
                 return;
+            }
+            catch (ApiException ex) when (ex.Code == ErrorCodes.SpotifyPairingRequired && ex.GetExtension<SpotifyPairingDto>("pairing") is { } pairing)
+            {
+                var paired = await Dialogs.OpenAsync<SpotifyPairingDialog>(L["SpotifyPairTitle"],
+                    new Dictionary<string, object?> { [nameof(SpotifyPairingDialog.Pairing)] = pairing });
+                if (paired is not true)
+                {
+                    return;
+                }
             }
             catch (ApiException ex) when (ex.Code == ErrorCodes.SpotifyNoFreeAccount && takeover is null)
             {

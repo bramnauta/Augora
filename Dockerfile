@@ -35,9 +35,11 @@ RUN case "$TARGETARCH" in amd64) arch=x86_64 ;; arm64) arch=arm64 ;; *) echo "Un
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
-# ffmpeg encodes Spotify audio (and later local files); go-librespot only links libasound dynamically.
+# ffmpeg encodes Spotify audio; go-librespot only links libasound dynamically. Spotify Soloist is not bundled (Spotify
+# does not allow redistributing it): AudioCentral downloads it when chosen. It needs libatomic and plays into a
+# private PulseAudio daemon that ffmpeg records.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg libasound2t64 \
+    && apt-get install -y --no-install-recommends ffmpeg libasound2t64 libatomic1 pulseaudio pulseaudio-utils \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir /data \
     && chown app:app /data

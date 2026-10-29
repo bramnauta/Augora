@@ -125,12 +125,27 @@ public sealed class SpotifyAccountService(
         var user = await response.Content.ReadFromJsonAsync(SpotifyJsonContext.Default.SpotifyUser, cancellationToken)
             ?? throw new AudioCentralException(ErrorCodes.SpotifyAuthFailed, "Spotify returned no user profile.", 502);
 
-        var account = new SpotifyAccount(user.Id, user.DisplayName ?? user.Id, link.OwnerUserId, link.ClientId, token.RefreshToken);
+        // Linking again keeps the playback engine chosen for the account.
+        var existing = await GetAccountAsync(user.Id, cancellationToken);
+        var account = new SpotifyAccount(user.Id, user.DisplayName ?? user.Id, link.OwnerUserId, link.ClientId, token.RefreshToken,
+            existing?.Engine ?? SpotifyEngine.Librespot, existing?.SoloistApiKey);
         await store.SaveAsync(account, cancellationToken);
         Remember(account, token);
         await ReloadAsync(cancellationToken);
         logger.LogInformation("Linked Spotify account {Account}", account.Id);
         return (account, link.ReturnUrl);
+    }
+
+    public async Task<SpotifyAccount> SetEngineAsync(SpotifyAccount account, SpotifyEngine engine, string? soloistApiKey, CancellationToken cancellationToken)
+    {
+        var updated = account with
+        {
+            Engine = engine,
+            SoloistApiKey = string.IsNullOrWhiteSpace(soloistApiKey) ? account.SoloistApiKey : soloistApiKey.Trim(),
+        };
+        await store.SaveAsync(updated, cancellationToken);
+        await ReloadAsync(cancellationToken);
+        return updated;
     }
 
     public async Task RemoveAccountAsync(string id, CancellationToken cancellationToken)

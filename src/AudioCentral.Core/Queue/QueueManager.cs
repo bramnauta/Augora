@@ -15,6 +15,8 @@ namespace AudioCentral.Core.Queue;
 /// </summary>
 public sealed class QueueManager
 {
+    private const int MaxFollowing = 500;
+
     private readonly ConcurrentDictionary<string, PlayerQueue> _queues = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new(StringComparer.OrdinalIgnoreCase);
     private readonly PlayerManager _players;
@@ -59,15 +61,43 @@ public sealed class QueueManager
         WithQueueAsync(playerId, (queue, _) => Task.FromResult(queue.ToDto()), persist: false, cancellationToken);
 
     /// <param name="takeoverPlayerId">Player whose provider resource (Spotify account) may be taken when none is free.</param>
-    public Task<QueueDto> PlayAsync(string playerId, string uri, QueueOption option, CancellationToken cancellationToken, string? takeoverPlayerId = null) =>
+    /// <param name="following">"Play from here": items queued after <paramref name="uri"/>; unknown or unplayable ones are skipped.</param>
+    public Task<QueueDto> PlayAsync(
+        string playerId,
+        string uri,
+        QueueOption option,
+        CancellationToken cancellationToken,
+        string? takeoverPlayerId = null,
+        IReadOnlyList<string>? following = null) =>
         WithQueueAsync(playerId, async (queue, ct) =>
         {
             var player = _players.GetAvailable(playerId);
             var item = await _library.GetItemAsync(MediaItemRef.Parse(uri), ct);
-            var items = await _library.GetQueueItemsAsync(item, ct);
+            var items = (await _library.GetQueueItemsAsync(item, ct)).ToList();
             if (items.Count == 0)
             {
                 throw new AudioCentralException(ErrorCodes.ItemNotPlayable, $"'{item.Name}' cannot be played.");
+            }
+
+            foreach (var next in (following ?? []).Take(MaxFollowing))
+            {
+                if (!MediaItemRef.TryParse(next, out var reference))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var followingItem = await _library.GetItemAsync(reference, ct);
+                    if (followingItem.IsPlayable && !followingItem.IsBrowsable)
+                    {
+                        items.Add(followingItem);
+                    }
+                }
+                catch (AudioCentralException ex)
+                {
+                    _logger.LogDebug(ex, "Skipping {Uri} after {Item}", next, uri);
+                }
             }
 
             if (queue.Enqueue(items, option) is { } index)

@@ -9,6 +9,7 @@ using AudioCentral.Core.Players;
 using AudioCentral.Core.Providers;
 using AudioCentral.Core.Streaming;
 using AudioCentral.Providers.Spotify.Librespot;
+using AudioCentral.Providers.Spotify.Soloist;
 using Microsoft.Extensions.Logging;
 
 namespace AudioCentral.Providers.Spotify;
@@ -28,6 +29,7 @@ public sealed class SpotifyProvider : IMusicProvider
     private readonly SpotifyAccountService _accounts;
     private readonly SpotifyAccountPool _pool;
     private readonly LibrespotManager _librespot;
+    private readonly SoloistManager? _soloist;
     private readonly PlayerManager _players;
     private readonly ICurrentUser _currentUser;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -40,6 +42,7 @@ public sealed class SpotifyProvider : IMusicProvider
         SpotifyAccountService accounts,
         SpotifyAccountPool pool,
         LibrespotManager librespot,
+        SoloistManager? soloist,
         PlayerManager players,
         ICurrentUser currentUser,
         IHttpClientFactory httpClientFactory,
@@ -48,6 +51,7 @@ public sealed class SpotifyProvider : IMusicProvider
         _accounts = accounts;
         _pool = pool;
         _librespot = librespot;
+        _soloist = soloist;
         _players = players;
         _currentUser = currentUser;
         _httpClientFactory = httpClientFactory;
@@ -63,11 +67,80 @@ public sealed class SpotifyProvider : IMusicProvider
     /// <summary>Account id → id of the player streaming with it.</summary>
     public IReadOnlyDictionary<string, string> GetAccountHolders() => _pool.GetHolders();
 
+    /// <summary>Whether the account is approved for playback, and otherwise how to approve it (a code, or the Spotify app).</summary>
+    public async Task<SpotifyPairingDto> GetPairingAsync(string accountId, CancellationToken cancellationToken)
+    {
+        var account = await GetLinkedAccountAsync(accountId, cancellationToken);
+        try
+        {
+            return account.Engine == SpotifyEngine.Soloist
+                ? await RequireSoloist().GetPairingAsync(account, cancellationToken)
+                : await _librespot.GetPairingAsync(account, cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new AudioCentralException(ErrorCodes.PlaybackFailed, ex.Message, 502, ex);
+        }
+    }
+
+    /// <summary>Switches the playback engine of an account; Soloist needs an API key and the user's consent.</summary>
+    public async Task<SpotifyEngine> SetEngineAsync(string accountId, SetSpotifyEngineRequest request, CancellationToken cancellationToken)
+    {
+        var account = await GetLinkedAccountAsync(accountId, cancellationToken);
+        if (request.Engine == SpotifyEngine.Soloist)
+        {
+            RequireSoloist();
+            if (!request.AcceptSoloistTerms)
+            {
+                throw new AudioCentralException(ErrorCodes.SpotifyNotConfigured,
+                    "Accept that AudioCentral downloads Spotify Soloist for you and that Spotify's terms do not clearly allow this use.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.SoloistApiKey) && account.SoloistApiKey is null)
+            {
+                throw new AudioCentralException(ErrorCodes.SpotifyNotConfigured, "Enter the Soloist API key of this Spotify account.");
+            }
+        }
+
+        // The other engine may hold the account's single stream; stop it.
+        _pool.Forget(account.Id);
+        await _librespot.RemoveAsync(account.Id);
+        _soloist?.Forget(account);
+        var updated = await _accounts.SetEngineAsync(account, request.Engine, request.SoloistApiKey, cancellationToken);
+        _logger.LogInformation("Spotify account {Account} now plays with {Engine}", account.Id, updated.Engine);
+        return updated.Engine;
+    }
+
     public async Task RemoveAccountAsync(string accountId, CancellationToken cancellationToken)
     {
         _pool.Forget(accountId);
         await _librespot.RemoveAsync(accountId);
+        if (await _accounts.GetAccountAsync(accountId, cancellationToken) is { } account)
+        {
+            _soloist?.Forget(account);
+        }
+
         await _accounts.RemoveAccountAsync(accountId, cancellationToken);
+    }
+
+    private async Task<SpotifyAccount> GetLinkedAccountAsync(string accountId, CancellationToken cancellationToken) =>
+        await _accounts.GetAccountAsync(accountId, cancellationToken)
+        ?? throw new AudioCentralException(ErrorCodes.ItemNotFound, $"Spotify account '{accountId}' is not linked.", 404);
+
+    private SoloistManager RequireSoloist() =>
+        _soloist is not null && SoloistManager.IsSupported
+            ? _soloist
+            : throw new AudioCentralException(ErrorCodes.SpotifyNotConfigured,
+                "Spotify Soloist only runs on Linux, in the AudioCentral container (it needs PulseAudio).", 409);
+
+    private static AudioCentralException PairingRequired(SpotifyPairingDto pairing)
+    {
+        var message = pairing.Method == SpotifyPairingMethod.Connect
+            ? $"Approve playback for Spotify account '{pairing.AccountName}' once: select '{pairing.DeviceName}' in the Spotify app on the same network."
+            : $"Approve playback for Spotify account '{pairing.AccountName}' once at {pairing.Url} (code {pairing.Code}).";
+        var error = new AudioCentralException(ErrorCodes.SpotifyPairingRequired, message, 409);
+        error.Extensions["pairing"] = pairing;
+        return error;
     }
 
     public async Task<BrowseResult> BrowseAsync(MediaItemRef? folder, CancellationToken cancellationToken)
@@ -226,10 +299,21 @@ public sealed class SpotifyProvider : IMusicProvider
             }
         }
 
-        // Start (or check) the daemon now, so login and installation problems are reported to the caller.
+        // Check the engine now, so pairing, login and installation problems are reported to the caller.
         try
         {
-            await _librespot.GetDaemonAsync(account, cancellationToken);
+            if (account.Engine == SpotifyEngine.Soloist)
+            {
+                var soloist = RequireSoloist();
+                if (!soloist.IsPaired(account))
+                {
+                    throw PairingRequired(await soloist.GetPairingAsync(account, cancellationToken));
+                }
+            }
+            else
+            {
+                await _librespot.GetLoggedInDaemonAsync(account, cancellationToken);
+            }
         }
         catch
         {
@@ -248,8 +332,15 @@ public sealed class SpotifyProvider : IMusicProvider
 
             try
             {
-                var daemon = await _librespot.GetDaemonAsync(account, ct);
-                await _librespot.StreamTrackAsync(daemon, item.Id, duration, output, ct);
+                if (account.Engine == SpotifyEngine.Soloist)
+                {
+                    await RequireSoloist().StreamTrackAsync(account, item.Id, duration, output, ct);
+                }
+                else
+                {
+                    var daemon = await _librespot.GetDaemonAsync(account, ct);
+                    await _librespot.StreamTrackAsync(daemon, item.Id, duration, output, ct);
+                }
             }
             finally
             {

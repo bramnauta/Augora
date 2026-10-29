@@ -34,7 +34,7 @@ internal static class PlayerEndpoints
             .WithSummary("Forget a disconnected browser or app player.");
 
         players.MapPost("/{id}/play", (string id, PlayRequest request, QueueManager queues, CancellationToken ct) =>
-                queues.PlayAsync(id, request.Uri, request.Option, ct, request.TakeoverPlayerId))
+                queues.PlayAsync(id, request.Uri, request.Option, ct, request.TakeoverPlayerId, request.Following))
             .WithSummary("Play or enqueue a media item. Albums and playlists enqueue their tracks.")
             .WithDescription("Returns 409 spotify_no_free_account (with the holders) when every Spotify account is streaming; "
                 + "repeat the request with takeoverPlayerId to stop one of them.");

@@ -218,6 +218,11 @@ namespace AudioCentral.Server.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Engine")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset>("LinkedAt")
                         .HasColumnType("TEXT");
 
@@ -226,6 +231,9 @@ namespace AudioCentral.Server.Data.Migrations
 
                     b.Property<string>("ProtectedRefreshToken")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedSoloistApiKey")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

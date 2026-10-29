@@ -1,0 +1,72 @@
+@inject ApiClient Api
+@inject DialogService Dialogs
+@inject IStringLocalizer<Strings> L
+
+@* Spotify's audio engine logs in on its own: the user approves it once at spotify.com/pair. Closes with true when paired. *@
+<RadzenStack Gap="1rem">
+    @if (Pairing.Method == SpotifyPairingMethod.Connect)
+    {
+        @* Soloist: Spotify Connect pairing from the Spotify app on the same network. *@
+        <RadzenText TextStyle="TextStyle.Body1">@L["SpotifyPairConnectText", Pairing.AccountName]</RadzenText>
+        <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">@Pairing.DeviceName</RadzenText>
+    }
+    else
+    {
+        <RadzenText TextStyle="TextStyle.Body1">@L["SpotifyPairText", Pairing.AccountName]</RadzenText>
+        @if (Pairing.Code is not null)
+        {
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0" Style="letter-spacing: 0.15em;">@Pairing.Code</RadzenText>
+        }
+        <div>
+            <a href="@Pairing.Url" target="_blank" rel="noopener" class="rz-button rz-button-md rz-variant-filled rz-primary rz-shade-default">@L["SpotifyPairOpen"]</a>
+        </div>
+    }
+    @if (_pending)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" AllowClose="false" Shade="Shade.Lighter">@L["SpotifyPairPending"]</RadzenAlert>
+    }
+    @if (_error is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" AllowClose="false" Shade="Shade.Lighter">@_error</RadzenAlert>
+    }
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Text="@L["Cancel"]" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="@(() => Dialogs.Close(false))" />
+        <RadzenButton Text="@L["SpotifyPairDone"]" IsBusy="_checking" Click="CheckAsync" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public SpotifyPairingDto Pairing { get; set; } = default!;
+
+    private bool _checking;
+    private bool _pending;
+    private string? _error;
+
+    private async Task CheckAsync()
+    {
+        _checking = true;
+        _error = null;
+        try
+        {
+            var pairing = await Api.GetSpotifyPairingAsync(Pairing.AccountId);
+            if (pairing.Paired)
+            {
+                Dialogs.Close(true);
+                return;
+            }
+
+            // A new code when the previous one expired.
+            Pairing = pairing;
+            _pending = true;
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _checking = false;
+        }
+    }
+}

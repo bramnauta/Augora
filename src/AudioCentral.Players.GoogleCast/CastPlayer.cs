@@ -14,12 +14,12 @@ namespace AudioCentral.Players.GoogleCast;
 /// </summary>
 internal sealed class CastPlayer : IPlayer, IAsyncDisposable
 {
-    private const string DefaultMediaReceiver = "CC1AD845";
     private const string Backdrop = "E8C28D3C";
 
     private readonly ILogger _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly TimeSpan _reconnectInterval;
+    private readonly string _receiverAppId;
     private readonly SemaphoreSlim _commandLock = new(1, 1);
     private readonly CancellationTokenSource _stopping = new();
     private readonly Lock _stateLock = new();
@@ -32,10 +32,12 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
     private long? _endedMediaSession;
     private PlayerStatus _status = PlayerStatus.Unavailable;
 
-    public CastPlayer(CastDevice device, TimeSpan reconnectInterval, ILoggerFactory loggerFactory)
+    /// <param name="receiverAppId">The Cast receiver app to play in; its name is what the device shows.</param>
+    public CastPlayer(CastDevice device, TimeSpan reconnectInterval, string receiverAppId, ILoggerFactory loggerFactory)
     {
         Device = device;
         _reconnectInterval = reconnectInterval;
+        _receiverAppId = receiverAppId;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<CastPlayer>();
     }
@@ -88,9 +90,9 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
         RunCommandAsync(async client =>
         {
             var app = client.ChromecastStatus?.Application;
-            if (app?.AppId != DefaultMediaReceiver)
+            if (app?.AppId != _receiverAppId)
             {
-                await client.LaunchApplicationAsync(DefaultMediaReceiver, false);
+                await client.LaunchApplicationAsync(_receiverAppId, false);
             }
 
             lock (_stateLock)
@@ -278,7 +280,7 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
 
         var volume = _receiverStatus.Volume;
         var app = _receiverStatus.Application;
-        var isOurs = app?.AppId == DefaultMediaReceiver
+        var isOurs = app?.AppId == _receiverAppId
             && _current is not null
             && (_mediaStatus?.Media is null || _mediaStatus.Media.ContentUrl == _current.StreamUrl.ToString() || _mediaStatus.Media.ContentId == _current.StreamUrl.ToString());
 

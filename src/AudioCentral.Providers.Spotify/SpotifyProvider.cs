@@ -323,6 +323,8 @@ public sealed class SpotifyProvider : IMusicProvider
 
         var duration = _seen.TryGetValue(item, out var known) ? known.Duration : null;
         var playerId = context.PlayerId;
+        // Soloist streams continue with the following Spotify tracks of the queue (flow mode): no gap, no rebuffering.
+        var flow = account.Engine == SpotifyEngine.Soloist && context.Continuation is not null;
         return new ProducedStreamSource(LibrespotManager.ContentType, async (output, ct) =>
         {
             if (!_pool.StreamStarted(account.Id, playerId))
@@ -334,7 +336,16 @@ public sealed class SpotifyProvider : IMusicProvider
             {
                 if (account.Engine == SpotifyEngine.Soloist)
                 {
-                    await RequireSoloist().StreamTrackAsync(account, item.Id, duration, output, ct);
+                    await RequireSoloist().StreamTracksAsync(account, new SoloistTrack(item.Id, duration), output, async (offset, token) =>
+                    {
+                        if (context.Continuation is not { } continuation
+                            || await continuation.ContinueAsync(i => i.Ref.Provider == Id && i.Type == MediaType.Track, offset, token) is not { } next)
+                        {
+                            return null;
+                        }
+
+                        return new SoloistTrack(next.Ref.Id, next.Duration ?? (_seen.TryGetValue(next.Ref, out var seen) ? seen.Duration : null));
+                    }, ct);
                 }
                 else
                 {
@@ -346,7 +357,7 @@ public sealed class SpotifyProvider : IMusicProvider
             {
                 _pool.StreamEnded(account.Id, playerId);
             }
-        });
+        }, Continuous: flow);
     }
 
     private async Task<BrowseResult> BrowseFolderAsync(string folderId, CancellationToken cancellationToken)

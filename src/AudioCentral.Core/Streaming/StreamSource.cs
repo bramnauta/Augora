@@ -25,7 +25,8 @@ public sealed record FileStreamSource(string Path, string ContentType) : StreamS
 /// Audio produced on demand by the server, e.g. decoded by librespot and encoded by ffmpeg. <see cref="WriteAsync"/>
 /// runs once per player request and writes the complete item; it returns when the item has ended.
 /// </summary>
-public sealed record ProducedStreamSource(string ContentType, Func<Stream, CancellationToken, Task> WriteAsync, bool IsLive = false)
+/// <param name="Continuous">Flow mode: the producer continues with following queue items through <c>PlaybackContext.Continuation</c>.</param>
+public sealed record ProducedStreamSource(string ContentType, Func<Stream, CancellationToken, Task> WriteAsync, bool IsLive = false, bool Continuous = false)
     : StreamSource(IsLive);
 
 public static class StreamSourceExtensions

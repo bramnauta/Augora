@@ -8,9 +8,10 @@ namespace AudioCentral.Players.Remote;
 /// A player that plays audio itself (browser tab, Android app) and is driven over the events hub.
 /// The device reports its state; this class only relays commands and mirrors that state.
 /// </summary>
-internal sealed class RemotePlayer(string id, string name, PlayerKind kind, IRemotePlayerChannel channel) : IPlayer
+internal sealed class RemotePlayer(string id, string name, PlayerKind kind, IRemotePlayerChannel channel) : IPlayer, IContinuousStreamPlayer
 {
     private readonly Lock _lock = new();
+    private readonly StreamSegments _segments = new();
     private PlayerStatus _status = PlayerStatus.Unavailable;
     private PlayMedia? _current;
 
@@ -83,14 +84,23 @@ internal sealed class RemotePlayer(string id, string name, PlayerKind kind, IRem
     {
         lock (_lock)
         {
-            var nowPlaying = _current is { } current && state.State != PlaybackState.Idle
+            TimeSpan? position = state.PositionSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null;
+            var current = _current;
+            // Flow mode: the device reports its position in the whole stream; show the item playing there.
+            if (current is { Continuous: true } && position is { } streamPosition && _segments.At(streamPosition) is { } segment)
+            {
+                current = segment.Media;
+                position = segment.Position;
+            }
+
+            var nowPlaying = current is not null && state.State != PlaybackState.Idle
                 ? new NowPlayingDto(
                     current.ItemUri,
                     current.Title,
                     current.Subtitle,
                     current.ImagePath ?? current.ImageUrl,
                     current.IsLive,
-                    state.PositionSeconds is { } position ? TimeSpan.FromSeconds(position) : null,
+                    position,
                     current.Duration)
                 : null;
             _status = new PlayerStatus(ConnectionId is not null, state.State, Math.Clamp(state.Volume, 0, 1), state.Muted, nowPlaying, null);
@@ -108,14 +118,18 @@ internal sealed class RemotePlayer(string id, string name, PlayerKind kind, IRem
         lock (_lock)
         {
             _current = media;
+            _segments.Reset(media);
         }
 
         return SendAsync(
             new RemotePlayerCommandDto(
                 RemotePlayerCommandType.Play,
-                new RemoteMediaDto(media.StreamPath, media.ContentType, media.IsLive, media.ItemUri, media.Title, media.Subtitle, media.ImagePath ?? media.ImageUrl, media.Duration?.TotalSeconds)),
+                new RemoteMediaDto(media.StreamPath, media.ContentType, media.IsLive, media.ItemUri, media.Title, media.Subtitle, media.ImagePath ?? media.ImageUrl,
+                    media.Continuous ? null : media.Duration?.TotalSeconds)),
             cancellationToken);
     }
+
+    public void AddSegment(PlayMedia media, TimeSpan streamOffset) => _segments.Add(media, streamOffset);
 
     public Task PauseAsync(CancellationToken cancellationToken) => SendAsync(new(RemotePlayerCommandType.Pause), cancellationToken);
 

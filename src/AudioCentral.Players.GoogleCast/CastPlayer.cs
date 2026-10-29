@@ -12,7 +12,7 @@ namespace AudioCentral.Players.GoogleCast;
 /// A Google Cast device or group, played through the Default Media Receiver.
 /// Keeps a connection open so status changes (also from other apps) are visible immediately.
 /// </summary>
-internal sealed class CastPlayer : IPlayer, IAsyncDisposable
+internal sealed class CastPlayer : IPlayer, IContinuousStreamPlayer, IAsyncDisposable
 {
     private const string Backdrop = "E8C28D3C";
 
@@ -31,6 +31,12 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
     private PlayMedia? _current;
     private long? _endedMediaSession;
     private PlayerStatus _status = PlayerStatus.Unavailable;
+
+    // Flow mode: the items in the stream that plays, and a clock since the last media status to estimate the position.
+    private readonly StreamSegments _segments = new();
+    private readonly System.Diagnostics.Stopwatch _sinceMediaStatus = new();
+    private Timer? _segmentTimer;
+    private string? _shownItem;
 
     /// <param name="receiverAppId">The Cast receiver app to play in; its name is what the device shows.</param>
     public CastPlayer(CastDevice device, TimeSpan reconnectInterval, string receiverAppId, ILoggerFactory loggerFactory)
@@ -99,10 +105,19 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
             {
                 _current = media;
                 _endedMediaSession = null;
+                _segments.Reset(media);
+            }
+
+            // A continuous stream changes item without the device knowing: check once a second which one plays.
+            if (media.Continuous)
+            {
+                _segmentTimer ??= new Timer(_ => RefreshSegment(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
             }
 
             await client.MediaChannel.LoadAsync(ToCastMedia(media), true, []);
         }, cancellationToken);
+
+    public void AddSegment(PlayMedia media, TimeSpan streamOffset) => _segments.Add(media, streamOffset);
 
     public Task PauseAsync(CancellationToken cancellationToken) =>
         RunCommandAsync(client => client.MediaChannel.PauseAsync(), cancellationToken);
@@ -133,6 +148,11 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _stopping.CancelAsync();
+        if (_segmentTimer is not null)
+        {
+            await _segmentTimer.DisposeAsync();
+        }
+
         await DisconnectAsync();
         if (_connectionLoop is not null)
         {
@@ -241,6 +261,7 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
         lock (_stateLock)
         {
             _mediaStatus = status;
+            _sinceMediaStatus.Restart();
 
             // Idle with a reason means the media stopped by itself; report it once per media session.
             if (status is { PlayerState: PlayerStateType.Idle, IdleReason: { } reason }
@@ -297,6 +318,14 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
         NowPlayingDto? nowPlaying = null;
         if (isOurs && _current is { } current && state != PlaybackState.Idle)
         {
+            TimeSpan? position = _mediaStatus is { } media ? TimeSpan.FromSeconds(media.CurrentTime) : null;
+            if (current.Continuous && StreamPosition(state) is { } streamPosition && _segments.At(streamPosition) is { } segment)
+            {
+                current = segment.Media;
+                position = segment.Position;
+            }
+
+            _shownItem = current.ItemUri;
             nowPlaying = new NowPlayingDto(
                 current.ItemUri,
                 current.Title,
@@ -304,7 +333,7 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
                 // The UI shows this: relative server artwork works through the UI's url, unlike the LAN url.
                 current.ImagePath ?? current.ImageUrl,
                 current.IsLive,
-                _mediaStatus is { } media ? TimeSpan.FromSeconds(media.CurrentTime) : null,
+                position,
                 current.Duration);
         }
         else if (external is not null && _mediaStatus?.Media?.Metadata is { } metadata)
@@ -315,13 +344,40 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
         return new PlayerStatus(true, state, volume?.Level ?? 0, volume?.Muted ?? false, nowPlaying, external);
     }
 
+    /// <summary>The device's position in the stream: the last reported time plus the time played since.</summary>
+    private TimeSpan? StreamPosition(PlaybackState state) =>
+        _mediaStatus is { } media
+            ? TimeSpan.FromSeconds(media.CurrentTime) + (state == PlaybackState.Playing ? _sinceMediaStatus.Elapsed : TimeSpan.Zero)
+            : null;
+
+    /// <summary>Publishes the status when the item at the stream position changed (flow mode).</summary>
+    private void RefreshSegment()
+    {
+        string? playing;
+        lock (_stateLock)
+        {
+            if (_current is not { Continuous: true } || StreamPosition(_status.State) is not { } position)
+            {
+                return;
+            }
+
+            playing = _segments.At(position)?.Media.ItemUri;
+        }
+
+        if (playing != _shownItem)
+        {
+            UpdateStatus();
+        }
+    }
+
     private static Media ToCastMedia(PlayMedia media) => new()
     {
         ContentUrl = media.StreamUrl.ToString(),
         ContentId = media.StreamUrl.ToString(),
         ContentType = media.ContentType,
         StreamType = media.IsLive ? StreamType.Live : StreamType.Buffered,
-        Duration = media.Duration?.TotalSeconds,
+        // A continuous stream is as long as the queue; the device must not stop after the first item's length.
+        Duration = media.Continuous ? null : media.Duration?.TotalSeconds,
         Metadata = new MusicTrackMetadata
         {
             MetadataType = MetadataType.Music,

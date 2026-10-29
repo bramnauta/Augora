@@ -158,6 +158,21 @@ Web API (metadata) ◀── SpotifyProvider ──▶ SpotifyAccountPool (accou
     Overnemen mag alleen bij je eigen of een gedeeld account. Home Assistant krijgt dezelfde 409.
 - Accounts hebben Spotify Premium nodig; een app in development mode staat vijf gebruikers toe.
 
+### Flow mode (Soloist)
+
+Soloist levert audio in echte tijd, en een Cast-speaker buffert bij elke nieuwe stream opnieuw een paar
+seconden. Daarom krijgt een speler zolang de wachtrij Spotify-nummers bevat één doorlopende stream:
+
+- De producer krijgt via `PlaybackContext.Continuation` (`IQueueContinuation`) toegang tot de wachtrij.
+  ±250 ms voor het einde van een nummer (berekend uit de duur en de `position_sync`-events) vraagt hij het
+  volgende item; is dat een Spotify-nummer, dan schuift de wachtrij door en start Soloist het direct in
+  dezelfde opname. Zo niet, dan eindigt de stream en gaat de wachtrij verder zoals altijd.
+- `PlayMedia.Continuous` vertelt de speler dat de stream langer is dan het eerste item (geen duur naar
+  Cast). Via `IContinuousStreamPlayer.AddSegment` leert de speler waar elk volgend item in de stream
+  begint, en toont hij het item op zijn huidige positie (Cast, browser/Android, groepen).
+- Beperking: een speaker met scherm toont de metadata van het eerste nummer; AudioCentral, Home Assistant
+  en de Android-app tonen wel het juiste nummer.
+
 ## Lokale bestanden
 
 - Mappen uit `Providers:LocalFiles:Folders` (naam + pad, bijv. een NAS-share als Docker-volume).

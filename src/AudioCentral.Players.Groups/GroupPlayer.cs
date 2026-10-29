@@ -11,7 +11,7 @@ namespace AudioCentral.Players.Groups;
 /// commands go to all members. Members start together, but players buffer differently (Cast especially), so the
 /// result is loosely synchronised rather than sample-accurate.
 /// </summary>
-internal sealed class GroupPlayer : IPlayer, IDisposable
+internal sealed class GroupPlayer : IPlayer, IContinuousStreamPlayer, IDisposable
 {
     public const string IdPrefix = "group:";
     private static readonly TimeSpan EndWait = TimeSpan.FromSeconds(5);
@@ -157,6 +157,15 @@ internal sealed class GroupPlayer : IPlayer, IDisposable
         UpdateStatus();
     }
 
+    /// <summary>Flow mode: every member plays the same broadcast, so each learns where the next item starts.</summary>
+    public void AddSegment(PlayMedia media, TimeSpan streamOffset)
+    {
+        foreach (var member in Members.OfType<IContinuousStreamPlayer>())
+        {
+            member.AddSegment(media, streamOffset);
+        }
+    }
+
     public Task PauseAsync(CancellationToken cancellationToken) => ForPlaying(m => m.PauseAsync(cancellationToken));
 
     public Task ResumeAsync(CancellationToken cancellationToken) => ForPlaying(m => m.ResumeAsync(cancellationToken));
@@ -237,8 +246,11 @@ internal sealed class GroupPlayer : IPlayer, IDisposable
 
         var leader = active.FirstOrDefault(m => m.Status.State is PlaybackState.Playing or PlaybackState.Paused);
         var nowPlaying = current is not null && state != PlaybackState.Idle
-            ? new NowPlayingDto(current.ItemUri, current.Title, current.Subtitle, current.ImagePath ?? current.ImageUrl, current.IsLive,
-                leader?.Status.NowPlaying?.Position, current.Duration)
+            // In flow mode the leader knows which item of the stream plays.
+            ? current.Continuous && leader?.Status.NowPlaying is { } leading
+                ? leading
+                : new NowPlayingDto(current.ItemUri, current.Title, current.Subtitle, current.ImagePath ?? current.ImageUrl, current.IsLive,
+                    leader?.Status.NowPlaying?.Position, current.Duration)
             : null;
 
         var status = new PlayerStatus(

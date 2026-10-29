@@ -199,10 +199,11 @@ public sealed class QueueManager
             _lastUsers[player.Id] = userId;
         }
 
+        var continuation = new QueueContinuation(this, player, queue.Items[index].Id);
         StreamSource stream;
         try
         {
-            stream = await provider.ResolveStreamAsync(item.Ref, new PlaybackContext(player.Id, userId, takeoverPlayerId), cancellationToken) switch
+            stream = await provider.ResolveStreamAsync(item.Ref, new PlaybackContext(player.Id, userId, takeoverPlayerId, continuation), cancellationToken) switch
             {
                 HttpStreamSource http => await _resolver.ResolveAsync(http, cancellationToken),
                 var other => other,
@@ -229,11 +230,57 @@ public sealed class QueueManager
 
         _logger.LogInformation("Playing {Item} on {Player} via {Url}", item.Ref, player.Name, url);
 
+        var continuous = stream is ProducedStreamSource { Continuous: true };
+        var media = MediaFor(item, url, path, stream.GetContentType(), stream.IsLive, continuous);
+        continuation.Media = media;
+        await player.PlayAsync(media, cancellationToken);
+    }
+
+    private PlayMedia MediaFor(MediaItem item, Uri url, string path, string contentType, bool isLive, bool continuous)
+    {
         // Server artwork (local files) is relative; Cast devices need it absolute.
         var imageUrl = item.ImageUrl is ['/', ..] relativeImage ? _urls.GetAbsoluteUrl(relativeImage).ToString() : item.ImageUrl;
-        await player.PlayAsync(
-            new PlayMedia(url, path, stream.GetContentType(), stream.IsLive, item.Ref.ToString(), item.Name, item.Subtitle, imageUrl, item.Duration, item.ImageUrl),
-            cancellationToken);
+        return new PlayMedia(url, path, contentType, isLive, item.Ref.ToString(), item.Name, item.Subtitle, imageUrl, item.Duration, item.ImageUrl, continuous);
+    }
+
+    /// <summary>
+    /// Flow mode for one stream: moves the queue on to the next item when the producer can play it in the same stream.
+    /// Does nothing once the queue changed under the stream (another item was started).
+    /// </summary>
+    private sealed class QueueContinuation(QueueManager manager, IPlayer player, string queueItemId) : IQueueContinuation
+    {
+        private string _queueItemId = queueItemId;
+
+        /// <summary>The media of the stream as the player got it; set once the stream session exists.</summary>
+        public PlayMedia? Media { get; set; }
+
+        public async Task<MediaItem?> ContinueAsync(Func<MediaItem, bool> canPlay, TimeSpan streamOffset, CancellationToken cancellationToken)
+        {
+            MediaItem? next = null;
+            await manager.WithQueueAsync(player.Id, (queue, _) =>
+            {
+                var current = queue.CurrentIndex is { } index ? queue.Items[index].Id : null;
+                if (current == _queueItemId && queue.GetNextIndexAfterEnd() is { } nextIndex && canPlay(queue.Items[nextIndex].Item))
+                {
+                    queue.SetCurrent(nextIndex);
+                    _queueItemId = queue.Items[nextIndex].Id;
+                    next = queue.Items[nextIndex].Item;
+                }
+
+                return Task.FromResult(queue.ToDto());
+            }, persist: true, cancellationToken);
+
+            if (next is not null && Media is { } media)
+            {
+                manager._logger.LogInformation("Flow: {Item} continues the stream on {Player} at {Offset}", next.Ref, player.Name, streamOffset);
+                if (player is IContinuousStreamPlayer continuous)
+                {
+                    continuous.AddSegment(manager.MediaFor(next, media.StreamUrl, media.StreamPath, media.ContentType, media.IsLive, true), streamOffset);
+                }
+            }
+
+            return next;
+        }
     }
 
     private async void OnPlaybackEnded(object? sender, (IPlayer Player, PlaybackEndReason Reason) e)

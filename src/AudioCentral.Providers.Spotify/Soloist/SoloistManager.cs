@@ -35,12 +35,16 @@ internal sealed partial class SoloistManager(
     private static readonly TimeSpan RenewBefore = TimeSpan.FromDays(7);
     private static readonly TimeSpan DrainTime = TimeSpan.FromSeconds(1.5);
 
+    // How long before the end of a track the next one starts: keeps autoplay out, costs at most this much of the tail.
+    private static readonly TimeSpan NextTrackLead = TimeSpan.FromMilliseconds(250);
+
     private readonly ILogger _logger = loggerFactory.CreateLogger<SoloistManager>();
     private readonly SemaphoreSlim _installLock = new(1, 1);
     private readonly SemaphoreSlim _audioLock = new(1, 1);
     private readonly ConcurrentDictionary<string, Process> _pairing = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, SoloistDaemon> _daemons = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _daemonLocks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, ActiveStream> _streams = new(StringComparer.OrdinalIgnoreCase);
     private Process? _pulse;
     private (TimeSpan Duration, byte[] Data)? _preroll;
 
@@ -100,57 +104,64 @@ internal sealed partial class SoloistManager(
     public bool IsPaired(SpotifyAccount account) => File.Exists(PairedMarker(account));
 
     /// <summary>
-    /// Plays one track on the account's Soloist daemon and writes it, encoded, to <paramref name="output"/>.
-    /// Returns when the track ended; Soloist is paused then, so it does not continue with autoplay.
+    /// Plays tracks on the account's Soloist daemon and writes them, encoded, to <paramref name="output"/> as one
+    /// stream (flow mode): just before a track ends, <paramref name="next"/> is asked for the next one, which starts
+    /// straight away, so there is no gap and the player does not buffer again. Returns when <paramref name="next"/>
+    /// has nothing more; Soloist is paused then, so it does not continue with autoplay.
     /// </summary>
-    public async Task StreamTrackAsync(SpotifyAccount account, string trackId, TimeSpan? duration, Stream output, CancellationToken cancellationToken)
+    /// <param name="next">Gets the stream offset where the next track starts; returns its id and duration, or <c>null</c>.</param>
+    public async Task StreamTracksAsync(
+        SpotifyAccount account,
+        SoloistTrack first,
+        Stream output,
+        Func<TimeSpan, CancellationToken, Task<SoloistTrack?>> next,
+        CancellationToken cancellationToken)
+    {
+        // One stream per account: Soloist plays one thing, and a stopping stream pauses it. A new stream (another
+        // track chosen, or another player taking the account over) first ends the previous one and waits until it
+        // has cleaned up, so that pause cannot hit the new track.
+        using var superseded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var token = superseded.Token;
+        var mine = new ActiveStream(superseded);
+        ActiveStream? previous = null;
+        _streams.AddOrUpdate(account.Id, mine, (_, old) =>
+        {
+            previous = old;
+            return mine;
+        });
+        if (previous is not null)
+        {
+            previous.Stop();
+            await previous.Done.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+
+        try
+        {
+            await PlayTracksAsync(account, first, output, next, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            // Replaced by a newer stream for this account: end quietly.
+            _logger.LogInformation("Soloist stream for {Account} replaced by a newer one", account.Id);
+        }
+        finally
+        {
+            mine.Done.TrySetResult();
+            _streams.TryRemove(new KeyValuePair<string, ActiveStream>(account.Id, mine));
+        }
+    }
+
+    private async Task PlayTracksAsync(
+        SpotifyAccount account,
+        SoloistTrack first,
+        Stream output,
+        Func<TimeSpan, CancellationToken, Task<SoloistTrack?>> next,
+        CancellationToken cancellationToken)
     {
         var sink = SinkName(account);
         var daemon = await GetDaemonAsync(account, cancellationToken);
-        var uri = $"spotify:track:{trackId}";
-
-        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var ended = new TaskCompletionSource<SoloistEnd>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var current = false;
-        var playing = false;
-        void OnEvent(object? sender, SoloistEvent e)
-        {
-            switch (e.Type)
-            {
-                case "track_changed" or "playback_state" when e.Uri is not null:
-                    if (e.Uri == uri)
-                    {
-                        current = true;
-                    }
-                    else if (current)
-                    {
-                        // Autoplay moved on to another track: ours is over.
-                        ended.TrySetResult(SoloistEnd.NextTrack);
-                    }
-
-                    if (e.Type == "playback_state")
-                    {
-                        goto case "playback_changed";
-                    }
-
-                    break;
-                case "playback_changed":
-                    if (e.Status == "playing" && current)
-                    {
-                        playing = true;
-                        started.TrySetResult();
-                    }
-                    else if (e.Status is "idle" or "paused" && playing)
-                    {
-                        ended.TrySetResult(SoloistEnd.Stopped);
-                    }
-
-                    break;
-                case "error" when !playing:
-                    ended.TrySetException(new InvalidOperationException($"Soloist could not play {uri}: {e.Message}"));
-                    break;
-            }
-        }
+        var watch = new TrackWatch(first);
+        void OnEvent(object? sender, SoloistEvent e) => Volatile.Read(ref watch).Handle(e);
 
         var pulse = new Dictionary<string, string> { ["PULSE_SERVER"] = $"unix:{PulseSocket}" };
         var preroll = await GetPrerollAsync(cancellationToken);
@@ -159,36 +170,49 @@ internal sealed partial class SoloistManager(
         var copy = recorder.StandardOutput.BaseStream.CopyToAsync(output, cancellationToken);
 
         daemon.EventReceived += OnEvent;
-        var elapsed = Stopwatch.StartNew();
-        var end = SoloistEnd.Stopped;
+        var offset = options.Value.SoloistPreroll > TimeSpan.Zero ? options.Value.SoloistPreroll : TimeSpan.Zero;
         try
         {
             await daemon.SendAsync("set_volume", new Dictionary<string, object?> { ["volume"] = 100 }, cancellationToken);
-            await daemon.SendAsync("play", new Dictionary<string, object?> { ["uri"] = uri }, cancellationToken);
-
-            if (await Task.WhenAny(started.Task, ended.Task, Task.Delay(TimeSpan.FromSeconds(30), cancellationToken)) != started.Task)
+            while (true)
             {
-                if (ended.Task.IsFaulted)
+                var elapsed = Stopwatch.StartNew();
+                await daemon.SendAsync("play", new Dictionary<string, object?> { ["uri"] = watch.Uri }, cancellationToken);
+                if (await Task.WhenAny(watch.Started.Task, watch.Ended.Task, Task.Delay(TimeSpan.FromSeconds(30), cancellationToken)) != watch.Started.Task)
                 {
-                    await ended.Task;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (watch.Ended.Task.IsFaulted)
+                    {
+                        await watch.Ended.Task;
+                    }
+
+                    throw new InvalidOperationException($"Soloist did not start {watch.Uri}: {Clean(daemon.LastError)}");
                 }
 
-                throw new InvalidOperationException($"Soloist did not start {uri}: {Clean(daemon.LastError)}");
-            }
+                _logger.LogInformation("Soloist plays {Uri} after {Milliseconds} ms", watch.Uri, elapsed.ElapsedMilliseconds);
+                var end = await WaitForEndAsync(watch, cancellationToken);
+                offset += watch.PlayedFor;
 
-            _logger.LogInformation("Soloist plays {Uri} after {Milliseconds} ms", uri, elapsed.ElapsedMilliseconds);
+                if (await next(offset, cancellationToken) is { } following)
+                {
+                    Volatile.Write(ref watch, new TrackWatch(following));
+                    continue;
+                }
 
-            // The end comes from the events; the duration is a safety net when an event is missed.
-            var limit = (duration ?? TimeSpan.FromMinutes(30)) + TimeSpan.FromSeconds(30);
-            if (await Task.WhenAny(ended.Task, Task.Delay(limit, cancellationToken)) == ended.Task)
-            {
-                end = await ended.Task;
-            }
+                if (end == SoloistEnd.NearEnd)
+                {
+                    // Nothing follows: let the track play out.
+                    await Task.WhenAny(watch.Ended.Task, Task.Delay(TimeSpan.FromSeconds(5), cancellationToken));
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
 
-            if (end != SoloistEnd.NextTrack)
-            {
-                // The null sink plays in real time: let the last audio arrive.
-                await Task.Delay(DrainTime, cancellationToken);
+                if (end != SoloistEnd.NextTrack)
+                {
+                    // The null sink plays in real time: let the last audio arrive.
+                    await Task.Delay(DrainTime, cancellationToken);
+                }
+
+                break;
             }
 
             await PauseQuietlyAsync(daemon);
@@ -198,7 +222,8 @@ internal sealed partial class SoloistManager(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // The player went away (stop, skip, other source): stop Soloist so the account is not streaming for nothing.
+            // The player went away (stop, skip, other source) or a newer stream takes over: stop Soloist before that
+            // one starts, so the account is not streaming for nothing.
             await PauseQuietlyAsync(daemon);
             throw;
         }
@@ -206,6 +231,139 @@ internal sealed partial class SoloistManager(
         {
             daemon.EventReceived -= OnEvent;
             Kill(recorder);
+        }
+    }
+
+    /// <summary>The stream that currently uses an account's Soloist.</summary>
+    private sealed class ActiveStream(CancellationTokenSource cancellation)
+    {
+        public TaskCompletionSource Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Stop()
+        {
+            try
+            {
+                cancellation.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already finished.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Waits until the track is about to end (by its duration and the reported position) or ended by itself. Starting
+    /// the next track a moment early keeps Soloist from playing an autoplay track in between.
+    /// </summary>
+    private static async Task<SoloistEnd> WaitForEndAsync(TrackWatch watch, CancellationToken cancellationToken)
+    {
+        var safety = (watch.Duration ?? TimeSpan.FromMinutes(30)) + TimeSpan.FromSeconds(30);
+        while (true)
+        {
+            // Task.WhenAny does not throw for a cancelled delay: without this a replaced stream would spin here.
+            cancellationToken.ThrowIfCancellationRequested();
+            var wait = safety - watch.PlayedFor;
+            if (watch.Duration is { } duration)
+            {
+                var remaining = duration - watch.Position;
+                if (remaining <= NextTrackLead)
+                {
+                    return SoloistEnd.NearEnd;
+                }
+
+                wait = remaining - NextTrackLead < TimeSpan.FromSeconds(1) ? remaining - NextTrackLead : TimeSpan.FromSeconds(1);
+            }
+
+            if (wait <= TimeSpan.Zero)
+            {
+                return SoloistEnd.Stopped;
+            }
+
+            if (await Task.WhenAny(watch.Ended.Task, Task.Delay(wait, cancellationToken)) == watch.Ended.Task)
+            {
+                return await watch.Ended.Task;
+            }
+        }
+    }
+
+    /// <summary>Events of the track that is playing: when it started, where it is, and how it ended.</summary>
+    private sealed class TrackWatch(SoloistTrack track)
+    {
+        // Time spent playing (the audio this track added to the stream), and time since the last known position.
+        private readonly Stopwatch _played = new();
+        private readonly Stopwatch _sincePosition = new();
+        private bool _current;
+        private bool _playing;
+        private long _positionMs;
+
+        public string Uri { get; } = $"spotify:track:{track.Id}";
+
+        public TimeSpan? Duration { get; } = track.Duration;
+
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource<SoloistEnd> Ended { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>The position in the track: the last reported position plus the time played since.</summary>
+        public TimeSpan Position => TimeSpan.FromMilliseconds(_positionMs) + _sincePosition.Elapsed;
+
+        public TimeSpan PlayedFor => _played.Elapsed;
+
+        public void Handle(SoloistEvent e)
+        {
+            switch (e.Type)
+            {
+                case "track_changed" or "playback_state" when e.Uri is not null:
+                    if (e.Uri == Uri)
+                    {
+                        _current = true;
+                    }
+                    else if (_current)
+                    {
+                        // Autoplay moved on to another track: ours is over.
+                        Ended.TrySetResult(SoloistEnd.NextTrack);
+                    }
+
+                    if (e.Type == "playback_state")
+                    {
+                        goto case "playback_changed";
+                    }
+
+                    break;
+                case "playback_changed":
+                    if (e.Status == "playing" && _current && !_playing)
+                    {
+                        _playing = true;
+                        _played.Start();
+                        _sincePosition.Start();
+                        Started.TrySetResult();
+                    }
+                    else if (e.Status is "idle" or "paused" && _playing)
+                    {
+                        _playing = false;
+                        _played.Stop();
+                        _sincePosition.Stop();
+                        Ended.TrySetResult(SoloistEnd.Stopped);
+                    }
+
+                    break;
+                case "position_sync" when e.PositionMs is { } position && _current:
+                    _positionMs = position;
+                    if (_playing)
+                    {
+                        _sincePosition.Restart();
+                    }
+                    else
+                    {
+                        _sincePosition.Reset();
+                    }
+
+                    break;
+                case "error" when !_playing:
+                    Ended.TrySetException(new InvalidOperationException($"Soloist could not play {Uri}: {e.Message}"));
+                    break;
+            }
         }
     }
 
@@ -325,8 +483,14 @@ internal sealed partial class SoloistManager(
 
     private enum SoloistEnd
     {
+        /// <summary>Paused or idle: the track played out (or was stopped).</summary>
         Stopped,
+
+        /// <summary>Soloist moved on to an autoplay track by itself.</summary>
         NextTrack,
+
+        /// <summary>The track is about to end; the next one can start now.</summary>
+        NearEnd,
     }
 
     public async ValueTask DisposeAsync()

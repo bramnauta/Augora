@@ -299,7 +299,8 @@ internal sealed class CastPlayer : IPlayer, IAsyncDisposable
                 current.ItemUri,
                 current.Title,
                 current.Subtitle,
-                current.ImageUrl,
+                // The UI shows this: relative server artwork works through the UI's url, unlike the LAN url.
+                current.ImagePath ?? current.ImageUrl,
                 current.IsLive,
                 _mediaStatus is { } media ? TimeSpan.FromSeconds(media.CurrentTime) : null,
                 current.Duration);

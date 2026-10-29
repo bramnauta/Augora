@@ -150,6 +150,41 @@ namespace AudioCentral.Server.Data.Migrations
                     b.ToTable("ManualCastDevices");
                 });
 
+            modelBuilder.Entity("AudioCentral.Server.Data.StoredPodcast", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Author")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FeedUrl")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("SubscribedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeedUrl")
+                        .IsUnique();
+
+                    b.ToTable("Podcasts");
+                });
+
             modelBuilder.Entity("AudioCentral.Server.Data.StoredQueue", b =>
                 {
                     b.Property<string>("PlayerId")

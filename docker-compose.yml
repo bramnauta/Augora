@@ -13,12 +13,18 @@ services:
     restart: unless-stopped
     volumes:
       - audiocentral-data:/data
+      # Music library, e.g. a NAS share mounted on the host. Read-only is enough.
+      - /mnt/nas/music:/music:ro
     environment:
       TZ: Europe/Amsterdam
       # Address under which the speakers reach this host; leave empty to auto-detect the LAN IP.
       AudioCentral__StreamBaseUrl: ""
       # Public url when running behind a reverse proxy.
       AudioCentral__PublicBaseUrl: ""
+      Providers__LocalFiles__Folders__0__Name: Muziek
+      Providers__LocalFiles__Folders__0__Path: /music
+      # Client id of your app on developer.spotify.com (accounts can also bring their own).
+      Providers__Spotify__ClientId: ""
 
 volumes:
   audiocentral-data:

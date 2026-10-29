@@ -6,6 +6,8 @@ using AudioCentral.Core.Queue;
 using AudioCentral.Core.Streaming;
 using AudioCentral.Players.GoogleCast;
 using AudioCentral.Players.Remote;
+using AudioCentral.Providers.LocalFiles;
+using AudioCentral.Providers.Podcasts;
 using AudioCentral.Providers.Spotify;
 using AudioCentral.Providers.TuneIn;
 using AudioCentral.Server;
@@ -35,12 +37,15 @@ builder.Services
     .AddAudioCentralCore(builder.Configuration)
     .AddTuneIn(builder.Configuration)
     .AddSpotify(builder.Configuration)
+    .AddLocalFiles(builder.Configuration)
+    .AddPodcasts(builder.Configuration)
     .AddGoogleCast(builder.Configuration)
     .AddRemotePlayers();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<ICurrentUser, HttpContextCurrentUser>();
 builder.Services.AddSingleton<ISpotifyAccountStore, EfSpotifyAccountStore>();
+builder.Services.AddSingleton<IPodcastStore, EfPodcastStore>();
 
 builder.Services.AddSingleton<IStreamUrlProvider, StreamUrlProvider>();
 builder.Services.AddSingleton<IEventPublisher, SignalREventPublisher>();
@@ -93,6 +98,7 @@ app.MapUserEndpoints();
 app.MapLibraryEndpoints();
 app.MapPlayerEndpoints();
 app.MapGoogleCastEndpoints();
+app.MapLibrarySourceEndpoints();
 if (app.Services.GetService<SpotifyProvider>() is not null)
 {
     app.MapSpotifyEndpoints();

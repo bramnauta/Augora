@@ -12,6 +12,8 @@ COPY src/AudioCentral.Core/AudioCentral.Core.csproj src/AudioCentral.Core/
 COPY src/AudioCentral.ServiceDefaults/AudioCentral.ServiceDefaults.csproj src/AudioCentral.ServiceDefaults/
 COPY src/AudioCentral.Providers.TuneIn/AudioCentral.Providers.TuneIn.csproj src/AudioCentral.Providers.TuneIn/
 COPY src/AudioCentral.Providers.Spotify/AudioCentral.Providers.Spotify.csproj src/AudioCentral.Providers.Spotify/
+COPY src/AudioCentral.Providers.LocalFiles/AudioCentral.Providers.LocalFiles.csproj src/AudioCentral.Providers.LocalFiles/
+COPY src/AudioCentral.Providers.Podcasts/AudioCentral.Providers.Podcasts.csproj src/AudioCentral.Providers.Podcasts/
 COPY src/AudioCentral.Players.GoogleCast/AudioCentral.Players.GoogleCast.csproj src/AudioCentral.Players.GoogleCast/
 COPY src/AudioCentral.Players.Remote/AudioCentral.Players.Remote.csproj src/AudioCentral.Players.Remote/
 COPY src/AudioCentral.Web/AudioCentral.Web.csproj src/AudioCentral.Web/

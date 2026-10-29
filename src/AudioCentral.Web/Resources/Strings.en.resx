@@ -118,4 +118,18 @@
   <data name="SpotifyBusyNone" xml:space="preserve"><value>None of these streams uses your account or a shared account. Ask the owner or link an account of your own.</value></data>
   <data name="SpotifyTakeOver" xml:space="preserve"><value>Stop and take over</value></data>
   <data name="ConfirmRemoveSpotify" xml:space="preserve"><value>Unlink Spotify account {0}?</value></data>
+  <data name="Nav_Podcasts" xml:space="preserve"><value>Podcasts</value></data>
+  <data name="PodcastSubscriptions" xml:space="preserve"><value>Subscriptions</value></data>
+  <data name="NoPodcasts" xml:space="preserve"><value>No podcasts yet. Search for one below or paste the url of an RSS feed.</value></data>
+  <data name="PodcastFind" xml:space="preserve"><value>Add podcast</value></data>
+  <data name="PodcastSearchOrUrl" xml:space="preserve"><value>Search or RSS feed url</value></data>
+  <data name="Subscribe" xml:space="preserve"><value>Subscribe</value></data>
+  <data name="Subscribed" xml:space="preserve"><value>Subscribed</value></data>
+  <data name="Unsubscribe" xml:space="preserve"><value>Unsubscribe</value></data>
+  <data name="ConfirmUnsubscribe" xml:space="preserve"><value>Unsubscribe from {0}?</value></data>
+  <data name="LocalLibrary" xml:space="preserve"><value>Local music</value></data>
+  <data name="LocalLibraryDisabled" xml:space="preserve"><value>No music folders are configured. Set Providers__LocalFiles__Folders__0__Name and __Path (for example a NAS share mounted at /music).</value></data>
+  <data name="LocalLibraryStatus" xml:space="preserve"><value>{0} tracks in the index.</value></data>
+  <data name="Rescan" xml:space="preserve"><value>Scan now</value></data>
+  <data name="RescanStarted" xml:space="preserve"><value>Scan started</value></data>
 </root>

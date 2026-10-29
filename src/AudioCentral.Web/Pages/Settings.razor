@@ -8,6 +8,29 @@
 
 <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">@L["Nav_Settings"]</RadzenText>
 
+<RadzenCard Variant="Variant.Filled" Style="max-width: 50rem;" class="rz-mb-6">
+    <RadzenText TextStyle="TextStyle.H6">@L["LocalLibrary"]</RadzenText>
+    @if (_local is null)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else if (!_local.Enabled)
+    {
+        <RadzenText TextStyle="TextStyle.Body2">@L["LocalLibraryDisabled"]</RadzenText>
+    }
+    else
+    {
+        <RadzenText TextStyle="TextStyle.Body2">@L["LocalLibraryStatus", _local.TrackCount]</RadzenText>
+        <ul class="rz-my-2">
+            @foreach (var folder in _local.Folders)
+            {
+                <li><code>@folder</code></li>
+            }
+        </ul>
+        <RadzenButton Icon="refresh" Text="@L["Rescan"]" Variant="Variant.Outlined" Click="RescanAsync" />
+    }
+</RadzenCard>
+
 <RadzenCard Variant="Variant.Filled" Style="max-width: 50rem;">
     <RadzenText TextStyle="TextStyle.H6">@L["ManualDevices"]</RadzenText>
     <RadzenText TextStyle="TextStyle.Body2">@L["ManualDevicesHelp"]</RadzenText>
@@ -50,8 +73,26 @@
 @code {
     private List<ManualCastDeviceDto> _devices = [];
     private NewDevice _new = new();
+    private LocalLibraryStatusDto? _local;
 
-    protected override async Task OnInitializedAsync() => _devices = await Api.GetManualCastDevicesAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _local = await Api.GetLocalLibraryAsync();
+        _devices = await Api.GetManualCastDevicesAsync();
+    }
+
+    private async Task RescanAsync()
+    {
+        try
+        {
+            await Api.RescanLocalLibraryAsync();
+            Notifications.Notify(NotificationSeverity.Info, L["RescanStarted"]);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
 
     private async Task AddAsync(NewDevice device)
     {

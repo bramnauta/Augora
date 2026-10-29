@@ -193,8 +193,10 @@ public sealed class QueueManager
 
         _logger.LogInformation("Playing {Item} on {Player} via {Url}", item.Ref, player.Name, url);
 
+        // Server artwork (local files) is relative; Cast devices need it absolute.
+        var imageUrl = item.ImageUrl is ['/', ..] relativeImage ? _urls.GetAbsoluteUrl(relativeImage).ToString() : item.ImageUrl;
         await player.PlayAsync(
-            new PlayMedia(url, path, stream.GetContentType(), stream.IsLive, item.Ref.ToString(), item.Name, item.Subtitle, item.ImageUrl, item.Duration),
+            new PlayMedia(url, path, stream.GetContentType(), stream.IsLive, item.Ref.ToString(), item.Name, item.Subtitle, imageUrl, item.Duration, item.ImageUrl),
             cancellationToken);
     }
 

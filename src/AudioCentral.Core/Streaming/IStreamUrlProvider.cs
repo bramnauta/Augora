@@ -7,4 +7,7 @@ namespace AudioCentral.Core.Streaming;
 public interface IStreamUrlProvider
 {
     Uri GetStreamUrl(StreamSession session);
+
+    /// <summary>Makes a server-relative url (artwork) absolute for players on the LAN.</summary>
+    Uri GetAbsoluteUrl(string relativePath);
 }

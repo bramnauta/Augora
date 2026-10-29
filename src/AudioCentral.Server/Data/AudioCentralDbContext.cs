@@ -14,6 +14,8 @@ public sealed class AudioCentralDbContext(DbContextOptions<AudioCentralDbContext
 
     public DbSet<StoredSpotifyAccount> SpotifyAccounts => Set<StoredSpotifyAccount>();
 
+    public DbSet<StoredPodcast> Podcasts => Set<StoredPodcast>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -49,7 +51,32 @@ public sealed class AudioCentralDbContext(DbContextOptions<AudioCentralDbContext
             // A user's own accounts become shared when the user is deleted.
             e.HasOne<AppUser>().WithMany().HasForeignKey(a => a.OwnerUserId).OnDelete(DeleteBehavior.SetNull);
         });
+
+        builder.Entity<StoredPodcast>(e =>
+        {
+            e.Property(p => p.FeedUrl).HasMaxLength(2000);
+            e.Property(p => p.Title).HasMaxLength(500);
+            e.Property(p => p.Author).HasMaxLength(500);
+            e.Property(p => p.ImageUrl).HasMaxLength(2000);
+            e.HasIndex(p => p.FeedUrl).IsUnique();
+        });
     }
+}
+
+/// <summary>A podcast subscription, shared by all users.</summary>
+public sealed class StoredPodcast
+{
+    public Guid Id { get; set; }
+
+    public required string FeedUrl { get; set; }
+
+    public required string Title { get; set; }
+
+    public string? Author { get; set; }
+
+    public string? ImageUrl { get; set; }
+
+    public DateTimeOffset SubscribedAt { get; set; }
 }
 
 /// <summary>A linked Spotify account. The refresh token is encrypted with ASP.NET Core data protection.</summary>

@@ -118,4 +118,18 @@
   <data name="SpotifyBusyNone" xml:space="preserve"><value>Geen van deze streams gebruikt jouw account of een gedeeld account. Vraag de eigenaar of koppel een eigen account.</value></data>
   <data name="SpotifyTakeOver" xml:space="preserve"><value>Stoppen en overnemen</value></data>
   <data name="ConfirmRemoveSpotify" xml:space="preserve"><value>Spotify-account {0} ontkoppelen?</value></data>
+  <data name="Nav_Podcasts" xml:space="preserve"><value>Podcasts</value></data>
+  <data name="PodcastSubscriptions" xml:space="preserve"><value>Abonnementen</value></data>
+  <data name="NoPodcasts" xml:space="preserve"><value>Nog geen podcasts. Zoek er hieronder een of plak de URL van een RSS-feed.</value></data>
+  <data name="PodcastFind" xml:space="preserve"><value>Podcast toevoegen</value></data>
+  <data name="PodcastSearchOrUrl" xml:space="preserve"><value>Zoeken of RSS-feed-URL</value></data>
+  <data name="Subscribe" xml:space="preserve"><value>Abonneren</value></data>
+  <data name="Subscribed" xml:space="preserve"><value>Geabonneerd</value></data>
+  <data name="Unsubscribe" xml:space="preserve"><value>Opzeggen</value></data>
+  <data name="ConfirmUnsubscribe" xml:space="preserve"><value>Abonnement op {0} opzeggen?</value></data>
+  <data name="LocalLibrary" xml:space="preserve"><value>Lokale muziek</value></data>
+  <data name="LocalLibraryDisabled" xml:space="preserve"><value>Er zijn geen muziekmappen ingesteld. Stel Providers__LocalFiles__Folders__0__Name en __Path in (bijvoorbeeld een NAS-share gekoppeld op /music).</value></data>
+  <data name="LocalLibraryStatus" xml:space="preserve"><value>{0} nummers in de index.</value></data>
+  <data name="Rescan" xml:space="preserve"><value>Nu scannen</value></data>
+  <data name="RescanStarted" xml:space="preserve"><value>Scan gestart</value></data>
 </root>

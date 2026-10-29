@@ -62,8 +62,11 @@ public sealed class StreamResolver(HttpClient httpClient, ILogger<StreamResolver
     }
 }
 
-internal static class AudioContentTypes
+public static class AudioContentTypes
 {
+    /// <summary>The content type of an audio file, from its extension.</summary>
+    public static string FromFileName(string fileName) => FromExtension(Path.GetExtension(fileName));
+
     public static string Normalize(string? contentType, Uri url)
     {
         var type = contentType?.ToLowerInvariant();
@@ -79,7 +82,9 @@ internal static class AudioContentTypes
         };
     }
 
-    private static string FromExtension(Uri url) => Path.GetExtension(url.AbsolutePath).ToLowerInvariant() switch
+    private static string FromExtension(Uri url) => FromExtension(Path.GetExtension(url.AbsolutePath));
+
+    private static string FromExtension(string extension) => extension.ToLowerInvariant() switch
     {
         ".aac" => "audio/aac",
         ".ogg" or ".opus" => "audio/ogg",

@@ -2,6 +2,7 @@ using System.Text.Json;
 using AudioCentral.Contracts;
 using AudioCentral.Core.Queue;
 using AudioCentral.Players.GoogleCast;
+using AudioCentral.Providers.Podcasts;
 using AudioCentral.Providers.Spotify;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -72,6 +73,40 @@ internal sealed class EfSpotifyAccountStore(IDbContextFactory<AudioCentralDbCont
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         await db.SpotifyAccounts.Where(a => a.Id == id).ExecuteDeleteAsync(cancellationToken);
+    }
+}
+
+internal sealed class EfPodcastStore(IDbContextFactory<AudioCentralDbContext> dbFactory, TimeProvider timeProvider) : IPodcastStore
+{
+    public async Task<IReadOnlyList<PodcastSubscription>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Podcasts.AsNoTracking()
+            .OrderBy(p => p.Title)
+            .Select(p => new PodcastSubscription(p.Id, p.FeedUrl, p.Title, p.Author, p.ImageUrl))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PodcastSubscription> AddAsync(PodcastSubscription subscription, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        db.Podcasts.Add(new StoredPodcast
+        {
+            Id = subscription.Id,
+            FeedUrl = subscription.FeedUrl,
+            Title = subscription.Title,
+            Author = subscription.Author,
+            ImageUrl = subscription.ImageUrl,
+            SubscribedAt = timeProvider.GetUtcNow(),
+        });
+        await db.SaveChangesAsync(cancellationToken);
+        return subscription;
+    }
+
+    public async Task<bool> RemoveAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Podcasts.Where(p => p.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
     }
 }
 

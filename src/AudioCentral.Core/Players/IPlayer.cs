@@ -57,6 +57,8 @@ public sealed record PlayerStatus(
 /// The same stream relative to the server (<c>/api/stream/...</c>), for players that reach AudioCentral through
 /// the url of the UI (browser behind a reverse proxy). Absolute for direct streams.
 /// </param>
+/// <param name="ImageUrl">Absolute artwork url (server artwork is made absolute like <paramref name="StreamUrl"/>).</param>
+/// <param name="ImagePath">The artwork as the item has it, relative for server artwork; for players using the UI's url.</param>
 public sealed record PlayMedia(
     Uri StreamUrl,
     string StreamPath,
@@ -66,7 +68,8 @@ public sealed record PlayMedia(
     string Title,
     string? Subtitle,
     string? ImageUrl,
-    TimeSpan? Duration);
+    TimeSpan? Duration,
+    string? ImagePath = null);
 
 public enum PlaybackEndReason
 {

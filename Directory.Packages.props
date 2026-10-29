@@ -30,6 +30,7 @@
   </ItemGroup>
   <ItemGroup Label="Providers / players">
     <PackageVersion Include="Sharpcaster" Version="3.0.0" />
+    <PackageVersion Include="TagLibSharp" Version="2.3.0" />
     <!-- Transitive dependency of Sharpcaster, pinned to latest -->
     <PackageVersion Include="Google.Protobuf" Version="3.36.2" />
   </ItemGroup>

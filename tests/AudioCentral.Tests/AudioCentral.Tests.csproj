@@ -23,6 +23,8 @@
     <ProjectReference Include="..\..\src\AudioCentral.Players.Remote\AudioCentral.Players.Remote.csproj" />
     <ProjectReference Include="..\..\src\AudioCentral.Server\AudioCentral.Server.csproj" />
     <ProjectReference Include="..\..\src\AudioCentral.Providers.Spotify\AudioCentral.Providers.Spotify.csproj" />
+    <ProjectReference Include="..\..\src\AudioCentral.Providers.LocalFiles\AudioCentral.Providers.LocalFiles.csproj" />
+    <ProjectReference Include="..\..\src\AudioCentral.Providers.Podcasts\AudioCentral.Providers.Podcasts.csproj" />
   </ItemGroup>
 
 </Project>

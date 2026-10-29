@@ -56,6 +56,20 @@ public sealed class ApiClient(HttpClient http)
     public Task<LinkSpotifyAccountResponse> LinkSpotifyAccountAsync(LinkSpotifyAccountRequest request) =>
         SendAsync<LinkSpotifyAccountResponse>(HttpMethod.Post, "api/spotify/link", request);
 
+    public Task<List<PodcastSubscriptionDto>> GetPodcastsAsync() => GetAsync<List<PodcastSubscriptionDto>>("api/podcasts");
+
+    public Task<PodcastSubscriptionDto> SubscribePodcastAsync(string feedUrl) =>
+        SendAsync<PodcastSubscriptionDto>(HttpMethod.Post, "api/podcasts", new SubscribePodcastRequest(feedUrl));
+
+    public Task UnsubscribePodcastAsync(Guid id) => SendAsync(HttpMethod.Delete, $"api/podcasts/{id}");
+
+    public Task<List<PodcastSearchResultDto>> SearchPodcastDirectoryAsync(string query) =>
+        GetAsync<List<PodcastSearchResultDto>>($"api/podcasts/search?q={Uri.EscapeDataString(query)}");
+
+    public Task<LocalLibraryStatusDto> GetLocalLibraryAsync() => GetAsync<LocalLibraryStatusDto>("api/local");
+
+    public Task RescanLocalLibraryAsync() => SendAsync(HttpMethod.Post, "api/local/rescan");
+
     public Task RemoveSpotifyAccountAsync(string id) => SendAsync(HttpMethod.Delete, $"api/spotify/accounts/{Escape(id)}");
 
     public Task PauseAsync(string playerId) => SendAsync(HttpMethod.Post, $"api/players/{Escape(playerId)}/pause");

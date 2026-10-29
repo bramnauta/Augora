@@ -88,7 +88,7 @@ internal sealed class RemotePlayer(string id, string name, PlayerKind kind, IRem
                     current.ItemUri,
                     current.Title,
                     current.Subtitle,
-                    current.ImageUrl,
+                    current.ImagePath ?? current.ImageUrl,
                     current.IsLive,
                     state.PositionSeconds is { } position ? TimeSpan.FromSeconds(position) : null,
                     current.Duration)
@@ -113,7 +113,7 @@ internal sealed class RemotePlayer(string id, string name, PlayerKind kind, IRem
         return SendAsync(
             new RemotePlayerCommandDto(
                 RemotePlayerCommandType.Play,
-                new RemoteMediaDto(media.StreamPath, media.ContentType, media.IsLive, media.ItemUri, media.Title, media.Subtitle, media.ImageUrl, media.Duration?.TotalSeconds)),
+                new RemoteMediaDto(media.StreamPath, media.ContentType, media.IsLive, media.ItemUri, media.Title, media.Subtitle, media.ImagePath ?? media.ImageUrl, media.Duration?.TotalSeconds)),
             cancellationToken);
     }
 

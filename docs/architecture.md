@@ -30,6 +30,8 @@ src/
   AudioCentral.Core               Domeinmodel, abstracties, PlayerManager, QueueManager, streaming
   AudioCentral.Providers.TuneIn   Muziekbron: TuneIn (OPML-API)
   AudioCentral.Providers.Spotify  Muziekbron: Spotify (Web API + go-librespot, account-pool)
+  AudioCentral.Providers.LocalFiles Muziekbron: lokale mappen / NAS (TagLibSharp-index)
+  AudioCentral.Providers.Podcasts Muziekbron: podcasts via RSS, zoeken via iTunes
   AudioCentral.Players.Remote     Spelers die zich via de hub aanmelden (browser, Android)
   AudioCentral.Players.GoogleCast Spelerbron: Google Cast (mDNS + Cast v2-protocol)
   AudioCentral.Server             ASP.NET Core host: REST-API, SignalR-hub, stream-endpoints,
@@ -136,6 +138,29 @@ Web API (metadata) ◀── SpotifyProvider ──▶ SpotifyAccountPool (accou
     Overnemen mag alleen bij je eigen of een gedeeld account. Home Assistant krijgt dezelfde 409.
 - Accounts hebben Spotify Premium nodig; een app in development mode staat vijf gebruikers toe.
 
+## Lokale bestanden
+
+- Mappen uit `Providers:LocalFiles:Folders` (naam + pad, bijv. een NAS-share als Docker-volume).
+- `LocalLibraryScanner` (BackgroundService) leest tags met TagLibSharp en bewaart de index in
+  `{DataDirectory}/local-library.json`; bij een nieuwe scan worden alleen gewijzigde bestanden
+  (grootte of wijzigingsdatum) opnieuw gelezen. Bladeren per map leest de map live, zodat nieuwe
+  bestanden direct zichtbaar zijn.
+- Ids: `local:track:{map}/{relatief pad}`, `local:folder:{map}/{pad}/`, `local:album:{hash}`,
+  `local:artist:{naam}`. Paden buiten de muziekmappen worden geweigerd.
+- Afspelen als `FileStreamSource` met range-support (spoelen werkt). Formaten die Cast en browsers
+  afspelen: mp3, flac, m4a/aac, ogg/opus, wav.
+- Artwork (ingebed of `cover.jpg`/`folder.jpg`) via het anonieme `/api/artwork/local/{token}`: Cast-apparaten
+  kunnen niet inloggen; het token is een hash van het pad en verwijst alleen naar geïndexeerde bestanden.
+  Servergerelateerde artwork is relatief; voor Cast maakt de `QueueManager` er een LAN-URL van.
+
+## Podcasts
+
+- Abonnementen gelden voor het hele huishouden (SQLite), toe te voegen via RSS-URL of de iTunes-zoek-API.
+- Feeds (RSS 2.0 + iTunes-extensies) worden 30 minuten gecachet; bij een fout wordt de oude kopie gebruikt.
+- Ids: `podcast:podcast:{base64url(feed)}` en `podcast:episode:{feed}/{hash(guid)}`, zodat ook podcasts
+  zonder abonnement (zoekresultaten) te bladeren en af te spelen zijn.
+- Afleveringen spelen via de gewone HTTP-relay.
+
 ## API
 
 - REST onder `/api/...`, OpenAPI-document op `/openapi/v1.json`, Scalar-UI in development.
@@ -196,7 +221,7 @@ niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
 1. ✅ **Basis** – solution, Aspire, Docker, core-abstracties, TuneIn → Google Cast, Blazor UI.
 2. ✅ **Auth + browser-speler** – Identity, tokens, browser als speler via de hub.
 3. ✅ **Spotify** – go-librespot per account, meerdere accounts, account-pool.
-4. **Lokale bestanden + podcasts**.
+4. ✅ **Lokale bestanden + podcasts**.
 5. **Android-app** en **Home Assistant-integratie**.
 6. **Eigen sync-groepen**.
 7. **Nextory** – haalbaarheidsonderzoek, daarna implementatie.

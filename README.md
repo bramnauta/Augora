@@ -13,7 +13,9 @@ op Android. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp en roa
 - ✅ Inloggen: lokale accounts met admin-rol, API-tokens (Home Assistant), access/refresh-tokens (apps), optioneel OIDC
 - ✅ Browser als speler (ook op telefoon), via hetzelfde protocol dat de Android-app gaat gebruiken
 - ✅ Spotify: meerdere accounts, bladeren (playlists, nummers, albums, artiesten), zoeken, afspelen via go-librespot
-- ⏳ Lokale bestanden, podcasts, Android, Home Assistant, Nextory
+- ✅ Lokale bestanden (NAS): bladeren per map, artiest en album, zoeken in tags, artwork
+- ✅ Podcasts: abonneren via RSS-URL of zoeken in de iTunes-catalogus
+- ⏳ Android, Home Assistant, Nextory
 
 Bij de eerste start vraagt de UI om het eerste account aan te maken; dat wordt beheerder.
 
@@ -78,6 +80,8 @@ Belangrijke instellingen (omgevingsvariabelen):
 | `AudioCentral__PublicBaseUrl` | Publieke URL achter een reverse proxy. |
 | `Providers__TuneIn__Username` | TuneIn-gebruikersnaam voor favorieten. |
 | `Providers__Spotify__ClientId` | Standaard client-id van je Spotify-app. |
+| `Providers__LocalFiles__Folders__0__Name` / `__Path` | Muziekmap, bijv. `Muziek` en `/music` (koppel je NAS-share als volume). Meer mappen met `__1__`, `__2__`, ... De naam zit in elke item-id: houd hem stabiel. |
+| `Providers__LocalFiles__RescanInterval` | Hoe vaak de mappen opnieuw gescand worden (standaard `06:00:00`); beheerders kunnen onder Instellingen direct scannen. |
 | `Players__GoogleCast__Discovery` | `false` om mDNS uit te zetten (alleen handmatige apparaten). |
 | `Authentication__Oidc__Authority` | Issuer-URL van je OIDC-provider; leeg = geen SSO. Redirect-URI: `https://<host>/signin-oidc`. |
 | `Authentication__Oidc__ClientId` / `__ClientSecret` | Client-gegevens bij de OIDC-provider. |

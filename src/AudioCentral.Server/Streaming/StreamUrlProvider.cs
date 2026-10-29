@@ -17,7 +17,9 @@ internal sealed class StreamUrlProvider(IOptions<AudioCentralOptions> options, I
 {
     private readonly Lazy<Uri> _baseUrl = new(() => DetermineBaseUrl(options.Value, server, logger));
 
-    public Uri GetStreamUrl(StreamSession session) => new(_baseUrl.Value, session.RelativePath.TrimStart('/'));
+    public Uri GetStreamUrl(StreamSession session) => GetAbsoluteUrl(session.RelativePath);
+
+    public Uri GetAbsoluteUrl(string relativePath) => new(_baseUrl.Value, relativePath.TrimStart('/'));
 
     private static Uri DetermineBaseUrl(AudioCentralOptions options, IServer server, ILogger logger)
     {

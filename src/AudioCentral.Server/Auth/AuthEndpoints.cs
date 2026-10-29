@@ -3,6 +3,7 @@ using AudioCentral.Contracts;
 using AudioCentral.Server.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.BearerToken;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,20 @@ internal static class AuthEndpoints
             var principal = await signIn.CreateUserPrincipalAsync(user);
             return TypedResults.SignIn(principal, authenticationScheme: IdentityConstants.BearerScheme);
         }).AllowAnonymous();
+
+        // The Android app logs in inside its WebView (so OIDC works too) and exchanges that cookie session for
+        // tokens for its native player. Cookie only: a bearer must not be able to mint fresh refresh tokens.
+        auth.MapPost("/token", async Task<Results<SignInHttpResult, ChallengeHttpResult>> (ClaimsPrincipal principal, SignInManager<AppUser> signIn) =>
+            {
+                if (await signIn.UserManager.GetUserAsync(principal) is not { } user)
+                {
+                    return TypedResults.Challenge();
+                }
+
+                return TypedResults.SignIn(await signIn.CreateUserPrincipalAsync(user), authenticationScheme: IdentityConstants.BearerScheme);
+            })
+            .RequireAuthorization(new AuthorizationPolicyBuilder(IdentityConstants.ApplicationScheme).RequireAuthenticatedUser().Build())
+            .WithSummary("Exchange the cookie session for an access and refresh token (used by the Android app).");
 
         auth.MapPost("/logout", async (SignInManager<AppUser> signIn) =>
         {

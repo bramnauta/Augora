@@ -15,7 +15,9 @@ op Android. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp en roa
 - ✅ Spotify: meerdere accounts, bladeren (playlists, nummers, albums, artiesten), zoeken, afspelen via go-librespot
 - ✅ Lokale bestanden (NAS): bladeren per map, artiest en album, zoeken in tags, artwork
 - ✅ Podcasts: abonneren via RSS-URL of zoeken in de iTunes-catalogus
-- ⏳ Android, Home Assistant, Nextory
+- ✅ Android-app (telefoon en TV): de UI plus een native speler die op de achtergrond doorspeelt
+- ✅ Home Assistant-integratie: media players, mediabrowser, realtime updates
+- ⏳ Eigen sync-groepen, Nextory
 
 Bij de eerste start vraagt de UI om het eerste account aan te maken; dat wordt beheerder.
 
@@ -40,6 +42,44 @@ de audio om naar MP3 320 kbps. Beide zitten in de Docker-image. Buiten Docker mo
 en `ffmpeg` op het PATH staan (of stel `Providers__Spotify__LibrespotPath` / `__FfmpegPath` in).
 Spotify geeft apps sinds februari 2026 alleen de inhoud van playlists die je zelf bezit of waaraan je
 meewerkt; gevolgde playlists zijn daardoor niet af te spelen.
+
+## Android-app
+
+`src/AudioCentral.Android` (C#, .NET for Android, Android 8.0+, ook Android TV). Bouwen en installeren
+op een toestel met USB-debugging:
+
+```bash
+dotnet build src/AudioCentral.Android -t:Install -c Release
+```
+
+Bij de eerste start vraagt de app het serveradres. Daarna toont hij de gewone UI, waar je inlogt (ook met
+OIDC). De app wisselt die sessie in voor tokens (`POST /api/auth/token`) en meldt het toestel aan als
+speler. Het afspelen loopt in een foreground service met mediabediening in de notificatie, op het
+vergrendelscherm en via Bluetooth/TV-afstandsbediening. Een ander serveradres instellen: app-gegevens
+wissen, of de server onbereikbaar maken (dan verschijnt het adresscherm).
+
+## Home Assistant
+
+Kopieer `integrations/homeassistant/custom_components/audiocentral` naar `config/custom_components/`
+van Home Assistant en herstart. Voeg de integratie toe met de URL van AudioCentral en een API-token
+(maak dat aan onder **Account**). Elke speler wordt een `media_player`:
+
+- afspelen, pauzeren, volgende/vorige, volume, mute, shuffle en herhalen;
+- de mediabrowser toont alle bronnen (TuneIn, Spotify, lokale muziek, podcasts);
+- `media_player.play_media` met een AudioCentral-URI, bijv.
+
+```yaml
+action: media_player.play_media
+target:
+  entity_id: media_player.keuken
+data:
+  media_content_type: music
+  media_content_id: tunein:radio:s24939
+  enqueue: replace
+```
+
+Updates komen realtime binnen via de SignalR-hub. Zijn alle Spotify-accounts bezet, dan geeft de actie
+een fout met wie ze gebruiken.
 
 ## Ontwikkelen
 

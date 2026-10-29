@@ -51,6 +51,22 @@ public sealed class AuthTests : IDisposable
     }
 
     [Fact]
+    public async Task A_cookie_session_can_be_exchanged_for_tokens_but_a_bearer_cannot()
+    {
+        var cookieClient = await SetupAdminAsync();
+
+        var exchange = await cookieClient.PostAsync("/api/auth/token", null, Ct);
+        exchange.EnsureSuccessStatusCode();
+        var tokens = await exchange.Content.ReadFromJsonAsync<AccessTokenResponse>(Ct);
+        Assert.False(string.IsNullOrEmpty(tokens!.RefreshToken));
+
+        var bearerClient = _factory.CreateClient();
+        bearerClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+        Assert.Equal(HttpStatusCode.OK, (await bearerClient.GetAsync("/api/players", Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await bearerClient.PostAsync("/api/auth/token", null, Ct)).StatusCode);
+    }
+
+    [Fact]
     public async Task Apps_log_in_with_bearer_and_refresh_tokens()
     {
         await SetupAdminAsync();

@@ -37,6 +37,9 @@ src/
   AudioCentral.Server             ASP.NET Core host: REST-API, SignalR-hub, stream-endpoints,
                                   persistence, auth, host van de WASM-app
   AudioCentral.Web                Blazor WebAssembly UI
+  AudioCentral.Android            Android-app (WebView-UI + native speler), telefoon en TV
+integrations/
+  homeassistant/custom_components/audiocentral   Home Assistant-integratie (Python)
 tests/
   AudioCentral.Tests              xUnit v3
 docs/
@@ -190,6 +193,28 @@ Spelers die zelf audio afspelen gebruiken één generiek protocol over de hub
   Session API. Browsers blokkeren automatisch afspelen zonder klik; de UI toont dan een knop
   "Afspelen toestaan". HLS-streams kan Chrome niet native afspelen.
 
+## Android-app
+
+- `AudioCentral.Android` (.NET for Android, API 26+, telefoon en Android TV via de leanback-launcher).
+- `MainActivity` toont de web-UI in een WebView (user agent `AudioCentralAndroid/1.0`; de UI verbergt dan
+  de browser-speler). Inloggen gebeurt in de WebView, dus OIDC werkt zonder extra code.
+- Zodra de WebView een `AudioCentral.Auth`-cookie heeft, wisselt de app die via `POST /api/auth/token`
+  in voor een access- en refresh-token (alleen met de cookie toegestaan, niet met een bearer-token).
+- `PlayerService` (foreground service, `mediaPlayback`) gebruikt hetzelfde remote-player-protocol als de
+  browser: `RegisterPlayer` met een vaste device-id en soort `Phone` of `Tv`, commando's uitvoeren met
+  `MediaPlayer`, state elke 5 s rapporteren. Audio focus, wake- en wifi-lock houden het afspelen gaande.
+- Notificatie, MediaSession (koptelefoon, Bluetooth, TV-afstandsbediening) en verlies van audio focus
+  sturen REST-commando's naar de server, zodat wachtrij en UI's het volgen.
+
+## Home Assistant-integratie
+
+- Custom component `integrations/homeassistant/custom_components/audiocentral` (config flow met URL +
+  API-token, reauth bij een ingetrokken token).
+- `media_player` per AudioCentral-speler; features volgen `PlayerFeatures`. Media browsing gebruikt
+  `/api/browse`, `play_media` neemt AudioCentral-URI's met `enqueue` → `QueueOption`.
+- Realtime: de integratie verbindt rechtstreeks met de hub via WebSocket (SignalR JSON-protocol, zonder
+  negotiate), met het API-token in de header; na elke (her)verbinding haalt hij de spelers opnieuw op.
+
 ## Authenticatie
 
 Altijd inloggen; er is geen anonieme toegang tot de API (behalve het stream-endpoint, dat met een
@@ -198,7 +223,7 @@ niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
 | Client | Methode |
 |---|---|
 | Web-UI | Identity-cookie (`POST /api/auth/login` met `useCookies: true`), 30 dagen sliding |
-| Android-app | `POST /api/auth/login` met `useCookies: false` → access token (1 uur) + refresh token (60 dagen, `POST /api/auth/refresh`) |
+| Android-app | Inloggen in de WebView (cookie), dan `POST /api/auth/token` → access token (1 uur) + refresh token (60 dagen, `POST /api/auth/refresh`). Apps zonder WebView: `POST /api/auth/login` met `useCookies: false` |
 | Home Assistant, scripts | Langlevend API-token (`act_...`), aan te maken onder Account; alleen de SHA-256 wordt opgeslagen |
 | SSO (optioneel) | OpenID Connect (Authentik, Keycloak, ...) via `Authentication:Oidc`; nieuwe gebruikers worden automatisch aangemaakt |
 
@@ -222,6 +247,6 @@ niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
 2. ✅ **Auth + browser-speler** – Identity, tokens, browser als speler via de hub.
 3. ✅ **Spotify** – go-librespot per account, meerdere accounts, account-pool.
 4. ✅ **Lokale bestanden + podcasts**.
-5. **Android-app** en **Home Assistant-integratie**.
+5. ✅ **Android-app** en **Home Assistant-integratie**.
 6. **Eigen sync-groepen**.
 7. **Nextory** – haalbaarheidsonderzoek, daarna implementatie.

@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">AudioCentral</string>
+    <string name="setup_title">Connect to AudioCentral</string>
+    <string name="setup_hint">Server address, e.g. http://192.168.1.10:4727</string>
+    <string name="setup_connect">Connect</string>
+    <string name="setup_failed">Cannot reach the server: %1$s</string>
+    <string name="page_failed">The server is unreachable. Check the address.</string>
+    <string name="channel_name">Playback</string>
+    <string name="player_idle">Ready to play</string>
+    <string name="action_previous">Previous</string>
+    <string name="action_play">Play</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_next">Next</string>
+</resources>

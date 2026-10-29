@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "AudioCentral",
+        "description": "Create an API token under Account in the AudioCentral UI.",
+        "data": {
+          "url": "URL",
+          "token": "API token"
+        }
+      },
+      "reauth_confirm": {
+        "title": "AudioCentral",
+        "description": "The API token was rejected. Create a new one under Account in the AudioCentral UI.",
+        "data": {
+          "token": "API token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot reach AudioCentral at this url.",
+      "invalid_auth": "The API token was rejected."
+    },
+    "abort": {
+      "already_configured": "This AudioCentral server is already configured.",
+      "reauth_successful": "The API token was updated."
+    }
+  }
+}

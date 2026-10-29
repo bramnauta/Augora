@@ -19,6 +19,39 @@ public sealed class StreamRelay(IHttpClientFactory httpClientFactory, ILogger<St
         var other => throw new NotSupportedException($"Stream source {other.GetType().Name} cannot be served."),
     };
 
+    /// <summary>Writes the complete audio of <paramref name="source"/> to <paramref name="output"/> (used for group broadcasts).</summary>
+    public async Task WriteToAsync(StreamSource source, Stream output, CancellationToken cancellationToken)
+    {
+        switch (source)
+        {
+            case ResolvedStream resolved:
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, resolved.Url);
+                request.Headers.TryAddWithoutValidation("Icy-MetaData", "0");
+                using var upstream = await httpClientFactory.CreateClient(StreamResolver.HttpClientName)
+                    .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                upstream.EnsureSuccessStatusCode();
+                await using var body = await upstream.Content.ReadAsStreamAsync(cancellationToken);
+                await body.CopyToAsync(output, BufferSize, cancellationToken);
+                break;
+            }
+
+            case FileStreamSource file:
+            {
+                await using var stream = new FileStream(file.Path, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, useAsync: true);
+                await stream.CopyToAsync(output, BufferSize, cancellationToken);
+                break;
+            }
+
+            case ProducedStreamSource produced:
+                await produced.WriteAsync(output, cancellationToken);
+                break;
+
+            default:
+                throw new NotSupportedException($"Stream source {source.GetType().Name} cannot be broadcast.");
+        }
+    }
+
     private async Task ProduceAsync(StreamSession session, ProducedStreamSource produced, HttpContext context)
     {
         var response = context.Response;

@@ -2,6 +2,7 @@ using System.Text.Json;
 using AudioCentral.Contracts;
 using AudioCentral.Core.Queue;
 using AudioCentral.Players.GoogleCast;
+using AudioCentral.Players.Groups;
 using AudioCentral.Providers.Podcasts;
 using AudioCentral.Providers.Spotify;
 using Microsoft.AspNetCore.DataProtection;
@@ -108,6 +109,31 @@ internal sealed class EfPodcastStore(IDbContextFactory<AudioCentralDbContext> db
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         return await db.Podcasts.Where(p => p.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
     }
+}
+
+internal sealed class EfSyncGroupStore(AudioCentralDbContext db) : ISyncGroupStore
+{
+    public async Task<IReadOnlyList<SyncGroupDefinition>> GetAllAsync(CancellationToken cancellationToken) =>
+        (await db.SyncGroups.AsNoTracking().ToListAsync(cancellationToken))
+            .Select(g => new SyncGroupDefinition(g.Id, g.Name, g.MemberIds))
+            .ToList();
+
+    public async Task SaveAsync(SyncGroupDefinition group, CancellationToken cancellationToken)
+    {
+        var stored = await db.SyncGroups.FirstOrDefaultAsync(g => g.Id == group.Id, cancellationToken);
+        if (stored is null)
+        {
+            stored = new StoredSyncGroup { Id = group.Id, Name = group.Name };
+            db.SyncGroups.Add(stored);
+        }
+
+        stored.Name = group.Name;
+        stored.MemberIds = [.. group.MemberIds];
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken) =>
+        await db.SyncGroups.Where(g => g.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
 }
 
 /// <summary>Singleton (used by <see cref="QueueManager"/>), hence the context factory.</summary>

@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<ICurrentUser, NoCurrentUser>();
         services.AddSingleton<LibraryService>();
         services.AddSingleton<PlayerManager>();
+        services.AddSingleton<GroupMembership>();
         services.AddHostedService(sp => sp.GetRequiredService<PlayerManager>());
         services.AddSingleton<QueueManager>();
 

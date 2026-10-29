@@ -132,4 +132,11 @@
   <data name="LocalLibraryStatus" xml:space="preserve"><value>{0} tracks in the index.</value></data>
   <data name="Rescan" xml:space="preserve"><value>Scan now</value></data>
   <data name="RescanStarted" xml:space="preserve"><value>Scan started</value></data>
+  <data name="Nav_Groups" xml:space="preserve"><value>Groups</value></data>
+  <data name="GroupsHelp" xml:space="preserve"><value>A group plays the same on players of any kind at once (Cast, browser, phone, TV) and shows up as a player of its own. They start together, but every device buffers differently: expect small differences. For Google Home speakers only, a Cast group from the Google Home app is more tightly synchronised.</value></data>
+  <data name="GroupNew" xml:space="preserve"><value>New group</value></data>
+  <data name="GroupEdit" xml:space="preserve"><value>Edit {0}</value></data>
+  <data name="GroupMembers" xml:space="preserve"><value>Players (at least two)</value></data>
+  <data name="ConfirmDeleteGroup" xml:space="preserve"><value>Delete group {0}?</value></data>
+  <data name="Edit" xml:space="preserve"><value>Edit</value></data>
 </root>

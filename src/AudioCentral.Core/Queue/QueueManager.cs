@@ -26,6 +26,7 @@ public sealed class QueueManager
     private readonly IEventPublisher _events;
     private readonly ILogger<QueueManager> _logger;
     private readonly ICurrentUser _currentUser;
+    private readonly GroupMembership _membership;
     private readonly ConcurrentDictionary<string, string> _lastUsers = new(StringComparer.OrdinalIgnoreCase);
 
     public QueueManager(
@@ -37,9 +38,11 @@ public sealed class QueueManager
         IQueueStore store,
         IEventPublisher events,
         ICurrentUser currentUser,
+        GroupMembership membership,
         ILogger<QueueManager> logger)
     {
         _currentUser = currentUser;
+        _membership = membership;
         _players = players;
         _library = library;
         _resolver = resolver;
@@ -156,6 +159,9 @@ public sealed class QueueManager
         var item = queue.Items[index].Item;
         var provider = _library.GetProvider(item.Ref.Provider);
 
+        // Playing on a member directly takes it out of its group.
+        _membership.Leave(player.Id);
+
         // Remember who started playback, so the queue advancing on its own keeps using that user's accounts.
         var userId = _currentUser.UserId ?? _lastUsers.GetValueOrDefault(player.Id);
         if (userId is not null)
@@ -202,6 +208,12 @@ public sealed class QueueManager
 
     private async void OnPlaybackEnded(object? sender, (IPlayer Player, PlaybackEndReason Reason) e)
     {
+        if (_membership.GetGroup(e.Player.Id) is not null)
+        {
+            // The group's queue advances; the member's own queue stays where it was.
+            return;
+        }
+
         try
         {
             await WithQueueAsync(e.Player.Id, async (queue, ct) =>

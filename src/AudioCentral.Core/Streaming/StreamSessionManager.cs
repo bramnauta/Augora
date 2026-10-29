@@ -36,6 +36,10 @@ public sealed class StreamSessionManager(TimeProvider timeProvider)
         return session;
     }
 
+    /// <summary>The current session of a player (a sync group reads the source of its own session).</summary>
+    public StreamSession? GetForPlayer(string playerId) =>
+        _sessions.Values.FirstOrDefault(s => s.PlayerId.Equals(playerId, StringComparison.OrdinalIgnoreCase) && !IsExpired(s));
+
     public StreamSession? Get(string token) =>
         _sessions.TryGetValue(token, out var session) && !IsExpired(session) ? session : null;
 

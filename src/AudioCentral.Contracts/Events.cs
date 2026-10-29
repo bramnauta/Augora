@@ -40,4 +40,5 @@ public static class ErrorCodes
     public const string SpotifyNotConfigured = "spotify_not_configured";
     public const string SpotifyAuthFailed = "spotify_auth_failed";
     public const string Forbidden = "forbidden";
+    public const string InvalidGroup = "invalid_group";
 }

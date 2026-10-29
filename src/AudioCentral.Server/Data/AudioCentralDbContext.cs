@@ -16,6 +16,8 @@ public sealed class AudioCentralDbContext(DbContextOptions<AudioCentralDbContext
 
     public DbSet<StoredPodcast> Podcasts => Set<StoredPodcast>();
 
+    public DbSet<StoredSyncGroup> SyncGroups => Set<StoredSyncGroup>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -60,7 +62,23 @@ public sealed class AudioCentralDbContext(DbContextOptions<AudioCentralDbContext
             e.Property(p => p.ImageUrl).HasMaxLength(2000);
             e.HasIndex(p => p.FeedUrl).IsUnique();
         });
+
+        builder.Entity<StoredSyncGroup>(e =>
+        {
+            e.Property(g => g.Name).HasMaxLength(200);
+            e.PrimitiveCollection(g => g.MemberIds);
+        });
     }
+}
+
+/// <summary>A sync group of players.</summary>
+public sealed class StoredSyncGroup
+{
+    public Guid Id { get; set; }
+
+    public required string Name { get; set; }
+
+    public List<string> MemberIds { get; set; } = [];
 }
 
 /// <summary>A podcast subscription, shared by all users.</summary>

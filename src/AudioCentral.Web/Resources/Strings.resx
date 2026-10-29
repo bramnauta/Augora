@@ -132,4 +132,11 @@
   <data name="LocalLibraryStatus" xml:space="preserve"><value>{0} nummers in de index.</value></data>
   <data name="Rescan" xml:space="preserve"><value>Nu scannen</value></data>
   <data name="RescanStarted" xml:space="preserve"><value>Scan gestart</value></data>
+  <data name="Nav_Groups" xml:space="preserve"><value>Groepen</value></data>
+  <data name="GroupsHelp" xml:space="preserve"><value>Een groep speelt hetzelfde op spelers van elk type tegelijk (Cast, browser, telefoon, TV) en verschijnt als eigen speler. Ze starten samen, maar elk apparaat buffert anders: verwacht kleine verschillen. Voor alleen Google Home-speakers is een Cast-groep uit de Google Home-app strakker synchroon.</value></data>
+  <data name="GroupNew" xml:space="preserve"><value>Nieuwe groep</value></data>
+  <data name="GroupEdit" xml:space="preserve"><value>{0} bewerken</value></data>
+  <data name="GroupMembers" xml:space="preserve"><value>Spelers (minstens twee)</value></data>
+  <data name="ConfirmDeleteGroup" xml:space="preserve"><value>Groep {0} verwijderen?</value></data>
+  <data name="Edit" xml:space="preserve"><value>Bewerken</value></data>
 </root>

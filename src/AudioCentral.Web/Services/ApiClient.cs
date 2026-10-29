@@ -66,6 +66,15 @@ public sealed class ApiClient(HttpClient http)
     public Task<List<PodcastSearchResultDto>> SearchPodcastDirectoryAsync(string query) =>
         GetAsync<List<PodcastSearchResultDto>>($"api/podcasts/search?q={Uri.EscapeDataString(query)}");
 
+    public Task<List<SyncGroupDto>> GetGroupsAsync() => GetAsync<List<SyncGroupDto>>("api/groups");
+
+    public Task<SyncGroupDto> SaveGroupAsync(Guid? id, SaveSyncGroupRequest request) =>
+        id is { } existing
+            ? SendAsync<SyncGroupDto>(HttpMethod.Put, $"api/groups/{existing}", request)
+            : SendAsync<SyncGroupDto>(HttpMethod.Post, "api/groups", request);
+
+    public Task DeleteGroupAsync(Guid id) => SendAsync(HttpMethod.Delete, $"api/groups/{id}");
+
     public Task<LocalLibraryStatusDto> GetLocalLibraryAsync() => GetAsync<LocalLibraryStatusDto>("api/local");
 
     public Task RescanLocalLibraryAsync() => SendAsync(HttpMethod.Post, "api/local/rescan");

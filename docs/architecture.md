@@ -33,6 +33,7 @@ src/
   AudioCentral.Providers.LocalFiles Muziekbron: lokale mappen / NAS (TagLibSharp-index)
   AudioCentral.Providers.Podcasts Muziekbron: podcasts via RSS, zoeken via iTunes
   AudioCentral.Players.Remote     Spelers die zich via de hub aanmelden (browser, Android)
+  AudioCentral.Players.Groups     Eigen sync-groepen over speler-types heen
   AudioCentral.Players.GoogleCast Spelerbron: Google Cast (mDNS + Cast v2-protocol)
   AudioCentral.Server             ASP.NET Core host: REST-API, SignalR-hub, stream-endpoints,
                                   persistence, auth, host van de WASM-app
@@ -75,9 +76,25 @@ aanmelden zoals browser en Android) en levert `IPlayer`-objecten:
 - `State` + `StateChanged`-event (idle/buffering/playing/paused, volume, positie).
 - `Capabilities` (seek, volume, grouping, ...).
 
-Google Cast-groepen zijn voor ons gewoon spelers (Google synchroniseert zelf). Voor latere
-*eigen* sync-groepen over speler-types heen is er `IPlayer.Kind = Group` en een
-`GroupMembers`-lijst; de stream-pipeline krijgt dan een gedeelde klok. Dat is nu alleen voorbereid.
+Google Cast-groepen zijn voor ons gewoon spelers (Google synchroniseert zelf). Eigen sync-groepen
+over speler-types heen staan hieronder.
+
+### Sync-groepen (`AudioCentral.Players.Groups`)
+
+- Een groep (`group:{id}`, `PlayerKind.SyncGroup`) is een speler met leden van elk type behalve
+  andere groepen; definities staan in SQLite. Elke gebruiker mag groepen beheren (`/api/groups`).
+- De groep heeft een eigen wachtrij. Bij afspelen leest een `BroadcastStream` de bron **één keer**
+  (HTTP-relay, bestand of librespot-producer) en krijgt elk lid een eigen stream-sessie die uit die
+  buffer leest. Een track begint voor elk lid vooraan; live radio begint bij de nieuwste ±128 kB.
+  Spotify gebruikt dus één account per groep.
+- Commando's (pauze, hervatten, stop, mute) gaan naar alle leden; volume schaalt alle leden
+  relatief, zodat de onderlinge balans blijft.
+- Is het eerste lid klaar, dan wacht de groep maximaal 5 s op de rest en laat dan zijn wachtrij
+  doorgaan. Zolang een speler in een groep speelt (`GroupMembership`), negeert zijn eigen wachtrij
+  zijn "klaar"-events; zelf iets op het lid afspelen haalt het uit de groep.
+- Synchronisatie: alle leden starten tegelijk, maar Cast-apparaten bufferen zelf en hebben geen
+  gedeelde klok met andere spelers, dus het resultaat is "losjes synchroon" (typisch < 1–2 s
+  verschil), geen sample-nauwkeurige multiroom. Voor alleen Google-speakers is een Cast-groep strakker.
 
 ### Queue (`PlayerQueue`)
 Elke speler heeft een wachtrij met items, huidige index, shuffle/repeat. De `QueueManager`
@@ -248,5 +265,5 @@ niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
 3. ✅ **Spotify** – go-librespot per account, meerdere accounts, account-pool.
 4. ✅ **Lokale bestanden + podcasts**.
 5. ✅ **Android-app** en **Home Assistant-integratie**.
-6. **Eigen sync-groepen**.
+6. ✅ **Eigen sync-groepen** (losjes synchroon, gedeelde bron).
 7. **Nextory** – haalbaarheidsonderzoek, daarna implementatie.

@@ -17,7 +17,8 @@ op Android. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp en roa
 - ✅ Podcasts: abonneren via RSS-URL of zoeken in de iTunes-catalogus
 - ✅ Android-app (telefoon en TV): de UI plus een native speler die op de achtergrond doorspeelt
 - ✅ Home Assistant-integratie: media players, mediabrowser, realtime updates
-- ⏳ Eigen sync-groepen, Nextory
+- ✅ Eigen groepen: spelers van elk type samen laten spelen (losjes synchroon, één bron en één Spotify-account per groep)
+- ⏳ Nextory
 
 Bij de eerste start vraagt de UI om het eerste account aan te maken; dat wordt beheerder.
 

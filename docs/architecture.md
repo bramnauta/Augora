@@ -289,7 +289,10 @@ niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
 - `docker-compose.yml`: macvlan-netwerk (`lan`) voor discovery en streams, plus een bridge-netwerk
   (`proxy`) voor een reverse proxy op dezelfde host. Met twee netwerken is `StreamBaseUrl` vast op het
   macvlan-adres gezet. In een bridge-netwerk zonder `StreamBaseUrl` logt de server een waarschuwing.
-- Home Assistant-app: later, als één container met `host_network: true` in `config.yaml`: mDNS en het stream-adres werken dan zonder macvlan. go-librespot zit altijd in dezelfde
+- Home Assistant-app: `ha-app/` (`config.yaml`, `Dockerfile`, `run.sh`) plus `repository.yaml` in de root;
+  één container met `host_network: true`, waardoor mDNS en het stream-adres zonder macvlan werken. De
+  image komt uit `.github/workflows/ha-app.yml` (ghcr.io); `run.sh` zet de app-opties om naar
+  `Augora__*`/`Providers__*` en start de server als gebruiker `app`. go-librespot zit altijd in dezelfde
   container als Augora; de audio loopt via een FIFO, dus een losse librespot-container kan niet.
 
 ## Roadmap

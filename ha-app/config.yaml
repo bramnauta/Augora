@@ -1,0 +1,33 @@
+name: Augora
+version: "0.1.1"
+slug: augora
+description: Multi-room audio hub for Spotify, radio, podcasts and local files
+url: https://github.com/bramnauta/Augora
+# Prebuilt by .github/workflows/ha-app.yml; the tag is the version above.
+image: ghcr.io/bramnauta/augora-ha
+arch:
+  - amd64
+  - aarch64
+# mDNS (Spotify Connect, Google Cast) and the stream address work without macvlan.
+host_network: true
+# The image has no s6/bashio; run.sh is the entrypoint.
+init: false
+# The image listens on 4727. With host_network every app shares the host's ports and a clash stops the server.
+ports:
+  4727/tcp: 4727
+ports_description:
+  4727/tcp: Augora web interface and audio streams
+webui: http://[HOST]:[PORT:4727]
+map:
+  - media:ro
+  - share:ro
+options:
+  spotify_client_id: ""
+  tunein_username: ""
+  stream_base_url: ""
+  public_base_url: ""
+schema:
+  spotify_client_id: str?
+  tunein_username: str?
+  stream_base_url: str?
+  public_base_url: str?

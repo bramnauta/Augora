@@ -100,6 +100,22 @@ pas weer als speler beschikbaar zodra je de app opent.
 
 ## Home Assistant
 
+### Server als Home Assistant-app
+
+1. Push naar `main`: de workflow `.github/workflows/ha-app.yml` bouwt de images en zet ze op
+   `ghcr.io/bramnauta/augora-ha`. Zet het package daarna op **Public** (GitHub → Packages → Package
+   settings), anders kan Home Assistant het niet ophalen.
+2. In Home Assistant: **Instellingen → Apps → App store → ⋮ → Repositories** en voeg
+   `https://github.com/bramnauta/Augora` toe. Installeer **Augora** en start de app.
+3. Open de web-UI op `http://<home-assistant>:4727` (een bewust ongebruikelijke poort, omdat de app het netwerk van de host deelt) en maak het eerste (admin-)account aan.
+
+De app draait met `host_network` (mDNS voor Spotify Connect en Cast, geen macvlan nodig). De HA-mappen
+`/media` en `/share` zijn als muziekmappen gekoppeld; Spotify-client-id, TuneIn-gebruikersnaam en de
+stream-/publieke URL stel je in onder de app-configuratie. Verhoog `version` in `ha-app/config.yaml`
+bij elke release, anders biedt Home Assistant geen update aan.
+
+### Integratie
+
 Kopieer `integrations/homeassistant/custom_components/augora` naar `config/custom_components/`
 van Home Assistant en herstart. Voeg de integratie toe met de URL van Augora en een API-token
 (maak dat aan onder **Account**). Elke speler wordt een `media_player`:

@@ -1,0 +1,61 @@
+name: Home Assistant app
+
+# Builds the multi-arch Augora image and the Home Assistant app image on top of it, and pushes both to
+# ghcr.io. The Home Assistant tag is the version in ha-app/config.yaml: bump it for every release,
+# Home Assistant offers an update when the version changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/**
+      - Dockerfile
+      - ha-app/**
+      - Directory.*.props
+      - global.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read app version
+        id: version
+        run: |
+          echo "value=$(sed -n 's/^version: "\(.*\)"/\1/p' ha-app/config.yaml)" >> "$GITHUB_OUTPUT"
+
+      - name: Build Augora image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/bramnauta/augora:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Home Assistant app image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ha-app/Dockerfile
+          build-args: BASE_IMAGE=ghcr.io/bramnauta/augora:latest
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/bramnauta/augora-ha:${{ steps.version.outputs.value }}
+            ghcr.io/bramnauta/augora-ha:latest

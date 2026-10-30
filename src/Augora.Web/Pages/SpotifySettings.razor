@@ -1,6 +1,7 @@
 @page "/spotify"
 @inject ApiClient Api
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @inject NotificationService Notifications
 @inject DialogService Dialogs
 @inject IStringLocalizer<Strings> L
@@ -190,7 +191,15 @@ else
         try
         {
             var response = await Api.LinkSpotifyAccountAsync(new LinkSpotifyAccountRequest(_shared, _clientId));
-            Navigation.NavigateTo(response.AuthorizeUrl, forceLoad: true);
+            if (Navigation.BaseUri.Contains("/api/hassio_ingress/", StringComparison.Ordinal))
+            {
+                // Inside the Home Assistant sidebar this page is a frame, and Spotify's login page refuses to load in one.
+                await JS.InvokeVoidAsync("open", response.AuthorizeUrl, "_blank");
+            }
+            else
+            {
+                Navigation.NavigateTo(response.AuthorizeUrl, forceLoad: true);
+            }
         }
         catch (ApiException ex)
         {

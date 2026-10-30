@@ -69,21 +69,23 @@ internal static class SpotifyEndpoints
         }).WithSummary("Start linking a Spotify account; open the returned url in the browser.");
 
         // Spotify redirects the browser here. The state is the unguessable link id, so no login is needed (the app may use bearer tokens).
-        spotify.MapGet("/callback", async (string? code, string? state, string? error, [FromServices] SpotifyAccountService accounts, CancellationToken ct) =>
+        spotify.MapGet("/callback", async (HttpContext context, string? code, string? state, string? error, [FromServices] SpotifyAccountService accounts, CancellationToken ct) =>
         {
+            // Behind a path prefix (Home Assistant ingress) the web app lives under that prefix.
+            var pathBase = context.Request.PathBase.Value;
             if (error is not null || code is null || state is null)
             {
-                return Results.Redirect($"/spotify?error={Uri.EscapeDataString(error ?? "missing_code")}");
+                return Results.Redirect($"{pathBase}/spotify?error={Uri.EscapeDataString(error ?? "missing_code")}");
             }
 
             try
             {
                 var (_, returnUrl) = await accounts.CompleteLinkAsync(state, code, ct);
-                return Results.Redirect(AuthEndpoints.LocalUrl(returnUrl) + "?linked=1");
+                return Results.Redirect(pathBase + AuthEndpoints.LocalUrl(returnUrl) + "?linked=1");
             }
             catch (AugoraException ex)
             {
-                return Results.Redirect($"/spotify?error={Uri.EscapeDataString(ex.Message)}");
+                return Results.Redirect($"{pathBase}/spotify?error={Uri.EscapeDataString(ex.Message)}");
             }
         }).AllowAnonymous().ExcludeFromDescription();
 

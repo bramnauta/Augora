@@ -17,6 +17,7 @@ COPY src/Augora.Providers.Podcasts/Augora.Providers.Podcasts.csproj src/Augora.P
 COPY src/Augora.Players.GoogleCast/Augora.Players.GoogleCast.csproj src/Augora.Players.GoogleCast/
 COPY src/Augora.Players.Remote/Augora.Players.Remote.csproj src/Augora.Players.Remote/
 COPY src/Augora.Players.Groups/Augora.Players.Groups.csproj src/Augora.Players.Groups/
+COPY src/Augora.Client/Augora.Client.csproj src/Augora.Client/
 COPY src/Augora.Web/Augora.Web.csproj src/Augora.Web/
 COPY src/Augora.Server/Augora.Server.csproj src/Augora.Server/
 RUN dotnet restore src/Augora.Server/Augora.Server.csproj -a $TARGETARCH

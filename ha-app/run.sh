@@ -17,6 +17,11 @@ opt Providers__TuneIn__Username tunein_username
 opt Augora__StreamBaseUrl stream_base_url
 opt Augora__PublicBaseUrl public_base_url
 
+# A boolean, so "false" must come through (the opt helper skips it).
+if [ "$(jq -r '.advertise_mdns' "$OPTIONS" 2>/dev/null || true)" = "false" ]; then
+    export Augora__AdvertiseMdns=false
+fi
+
 # Home Assistant media and share folders (mounted read-only when the app is started).
 export Providers__LocalFiles__Folders__0__Name=Media
 export Providers__LocalFiles__Folders__0__Path=/media

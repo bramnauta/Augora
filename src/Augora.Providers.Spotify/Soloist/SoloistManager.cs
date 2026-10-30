@@ -77,7 +77,15 @@ internal sealed partial class SoloistManager(
         {
             var directory = AccountDirectory(account);
             Directory.CreateDirectory(directory);
-            var process = Start(BinaryPath, ["-n", DeviceName(account), "-k", key, "-D", directory, "--pair"], account.Id, environment: null);
+            // The last lines of output explain why Soloist stops on its own.
+            var tail = new ConcurrentQueue<string>();
+            var process = Start(BinaryPath, ["-n", DeviceName(account), "-k", key, "-D", directory, "--pair"], account.Id, environment: null, onLine: line =>
+            {
+                tail.Enqueue(line);
+                while (tail.Count > 8 && tail.TryDequeue(out _))
+                {
+                }
+            });
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) =>
             {
@@ -94,7 +102,8 @@ internal sealed partial class SoloistManager(
                 }
                 else
                 {
-                    _logger.LogWarning("Soloist pairing for {Account} ended with exit code {Code}", account.Id, process.ExitCode);
+                    process.WaitForExit(); // lets the output readers finish
+                    _logger.LogWarning("Soloist pairing for {Account} ended with exit code {Code}: {Output}", account.Id, process.ExitCode, string.Join(" | ", tail));
                 }
             };
             _pairing[account.Id] = process;

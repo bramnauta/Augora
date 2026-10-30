@@ -35,6 +35,9 @@ public sealed class SpotifyProvider : IMusicProvider
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SpotifyProvider> _logger;
     private readonly ConcurrentDictionary<MediaItemRef, MediaItem> _seen = new();
+
+    /// <summary>Accounts whose app is refused by the recommendations endpoint (created after 27 November 2024).</summary>
+    private readonly ConcurrentDictionary<string, byte> _recommendationsRefused = new(StringComparer.OrdinalIgnoreCase);
     // Playlist contents are only readable by an account that owns or collaborates on the playlist.
     private readonly ConcurrentDictionary<string, string> _playlistAccounts = new(StringComparer.Ordinal);
 
@@ -263,19 +266,46 @@ public sealed class SpotifyProvider : IMusicProvider
     }
 
     /// <summary>
-    /// Spotify no longer offers recommendations or related artists to apps like this one, so track radio plays more by the
-    /// artist of the seed (found with search), shuffled.
+    /// Track radio from Spotify's recommendations. Apps created after 27 November 2024 get 403 for those; then (and
+    /// remembered per account) it plays more by the artist of the seed, found with search, shuffled.
     /// </summary>
     public async Task<IReadOnlyList<MediaItem>> GetSimilarAsync(MediaItem seed, int count, IReadOnlySet<MediaItemRef> exclude, CancellationToken cancellationToken)
     {
         // The subtitle of a track is "Artist, Artist · Album".
         var artist = seed.Subtitle?.Split(" · ")[0].Split(", ")[0];
-        if (seed.Type != MediaType.Track || string.IsNullOrWhiteSpace(artist) || (await _accounts.GetAccountsAsync(cancellationToken)).Count == 0)
+        if (seed.Type != MediaType.Track || (await _accounts.GetAccountsAsync(cancellationToken)).Count == 0)
         {
             return [];
         }
 
         var account = await GetApiAccountAsync(null, cancellationToken);
+        if (!_recommendationsRefused.ContainsKey(account.Id))
+        {
+            try
+            {
+                var recommended = await GetAsync(account, $"recommendations?seed_tracks={Escape(seed.Ref.Id)}&limit={PageSize}",
+                    SpotifyJsonContext.Default.SpotifyRecommendations, cancellationToken);
+                var radio = SpotifyMapper.NotNull((recommended.Tracks ?? []).Select(t => SpotifyMapper.Track(t)))
+                    .Where(t => !exclude.Contains(t.Ref))
+                    .Take(count)
+                    .ToList();
+                if (radio.Count > 0)
+                {
+                    return Remember(radio);
+                }
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+            {
+                _logger.LogInformation("Spotify recommendations are not available to the app of {Account}; autoplay uses search instead", account.Id);
+                _recommendationsRefused[account.Id] = 0;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(artist))
+        {
+            return [];
+        }
+
         var result = await GetAsync(account, $"search?q={Escape($"artist:\"{artist}\"")}&type=track&limit={SmallPageSize}",
             SpotifyJsonContext.Default.SpotifySearchResponse, cancellationToken);
         var tracks = SpotifyMapper.NotNull((result.Tracks?.Items ?? []).Select(t => SpotifyMapper.Track(t)))

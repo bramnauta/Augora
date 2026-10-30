@@ -80,6 +80,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 app.UseForwardedHeaders();
+app.UseIngressPathBase();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
@@ -117,11 +118,8 @@ else
 app.MapStreamEndpoints();
 app.MapHub<AugoraHub>(EventsHub.Path);
 
-// index.html must never be cached: it decides which version of the app the browser loads after an update.
-app.MapFallbackToFile("index.html", new StaticFileOptions
-{
-    OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache, no-store",
-}).AllowAnonymous();
+// The web app's index.html for client-side routes, with the base href of Home Assistant ingress when needed.
+app.MapFallback(context => Ingress.ServeIndexAsync(context, app.Environment.WebRootFileProvider)).AllowAnonymous();
 
 await app.RunAsync();
 

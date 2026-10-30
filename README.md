@@ -122,6 +122,10 @@ pas weer als speler beschikbaar zodra je de app opent.
    `https://github.com/bramnauta/Augora` toe. Installeer **Augora** en start de app.
 3. Open de web-UI op `http://<home-assistant>:4727` (een bewust ongebruikelijke poort, omdat de app het netwerk van de host deelt) en maak het eerste (admin-)account aan.
 
+De interface staat ook in de zijbalk van Home Assistant (ingress). Zet dat aan of uit met de schakelaar
+**Toon in zijbalk** op de pagina van de app. Inloggen via OIDC werkt alleen op het directe adres, niet
+via de zijbalk; wachtwoord-login werkt op beide.
+
 De app draait met `host_network` (mDNS voor Spotify Connect en Cast, geen macvlan nodig). De HA-mappen
 `/media` en `/share` zijn als muziekmappen gekoppeld; Spotify-client-id, TuneIn-gebruikersnaam en de
 stream-/publieke URL stel je in onder de app-configuratie. Verhoog `version` in `ha-app/config.yaml`

@@ -43,17 +43,18 @@
     <RadzenSidebar @bind-Expanded="_sidebarExpanded">
         <RadzenStack Style="height: 100%;" JustifyContent="JustifyContent.SpaceBetween">
             <RadzenPanelMenu>
-                <RadzenPanelMenuItem Text="@L["Nav_Players"]" Icon="speaker" Path="/" />
-                <RadzenPanelMenuItem Text="@L["Nav_Browse"]" Icon="library_music" Path="/browse" />
-                <RadzenPanelMenuItem Text="@L["Nav_Search"]" Icon="search" Path="/search" />
-                <RadzenPanelMenuItem Text="@L["Nav_Queue"]" Icon="queue_music" Path="/queue" />
-                <RadzenPanelMenuItem Text="@L["Nav_Groups"]" Icon="speaker_group" Path="/groups" />
-                <RadzenPanelMenuItem Text="@L["Nav_Podcasts"]" Icon="podcasts" Path="/podcasts" />
-                <RadzenPanelMenuItem Text="@L["Nav_Spotify"]" Icon="graphic_eq" Path="/spotify" />
-                <RadzenPanelMenuItem Text="@L["Nav_Account"]" Icon="manage_accounts" Path="/account" />
+                @* Relative paths: the app can be served under a prefix (Home Assistant ingress). *@
+                <RadzenPanelMenuItem Text="@L["Nav_Players"]" Icon="speaker" Path="./" />
+                <RadzenPanelMenuItem Text="@L["Nav_Browse"]" Icon="library_music" Path="browse" />
+                <RadzenPanelMenuItem Text="@L["Nav_Search"]" Icon="search" Path="search" />
+                <RadzenPanelMenuItem Text="@L["Nav_Queue"]" Icon="queue_music" Path="queue" />
+                <RadzenPanelMenuItem Text="@L["Nav_Groups"]" Icon="speaker_group" Path="groups" />
+                <RadzenPanelMenuItem Text="@L["Nav_Podcasts"]" Icon="podcasts" Path="podcasts" />
+                <RadzenPanelMenuItem Text="@L["Nav_Spotify"]" Icon="graphic_eq" Path="spotify" />
+                <RadzenPanelMenuItem Text="@L["Nav_Account"]" Icon="manage_accounts" Path="account" />
                 <AuthorizeView Roles="@Roles.Admin">
-                    <RadzenPanelMenuItem Text="@L["Nav_Users"]" Icon="group" Path="/users" />
-                    <RadzenPanelMenuItem Text="@L["Nav_Settings"]" Icon="settings" Path="/settings" />
+                    <RadzenPanelMenuItem Text="@L["Nav_Users"]" Icon="group" Path="users" />
+                    <RadzenPanelMenuItem Text="@L["Nav_Settings"]" Icon="settings" Path="settings" />
                 </AuthorizeView>
             </RadzenPanelMenu>
 

@@ -59,6 +59,9 @@ else
 
     private string SafeReturnUrl => ReturnUrl is { } url && url.StartsWith('/') && !url.StartsWith("//") && !url.StartsWith("/login") ? url : "/";
 
+    // Relative to the base href, so it also works when the app is served under a path prefix (Home Assistant ingress).
+    private string ReturnTarget => SafeReturnUrl.TrimStart('/');
+
     protected override async Task OnInitializedAsync()
     {
         // No Auth.Refresh() here: notifying a state change re-creates this page and loops.
@@ -70,7 +73,7 @@ else
         }
         else if (_status.User is not null)
         {
-            Navigation.NavigateTo(SafeReturnUrl);
+            Navigation.NavigateTo(ReturnTarget);
         }
         else if (ExternalError is not null)
         {
@@ -86,7 +89,7 @@ else
         {
             await Api.LoginAsync(_userName, _password);
             // Full reload: starts the hub connection and the player store with the new cookie.
-            Navigation.NavigateTo(SafeReturnUrl, forceLoad: true);
+            Navigation.NavigateTo(ReturnTarget, forceLoad: true);
         }
         catch (ApiException ex)
         {

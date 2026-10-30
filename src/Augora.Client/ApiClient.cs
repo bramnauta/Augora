@@ -185,7 +185,7 @@ public sealed class ApiClient(HttpClient http)
             return;
         }
 
-        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && response.RequestMessage?.RequestUri?.AbsolutePath.StartsWith("/api/auth/", StringComparison.Ordinal) != true)
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && response.RequestMessage?.RequestUri?.AbsolutePath.Contains("/api/auth/", StringComparison.Ordinal) != true)
         {
             Unauthorized?.Invoke();
         }

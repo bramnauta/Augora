@@ -72,7 +72,7 @@ public sealed class PlayerStore(ApiClient api, NavigationManager navigation, IJS
     private async Task InitializeCoreAsync()
     {
         _hub = new HubConnectionBuilder()
-            .WithUrl(navigation.ToAbsoluteUri(EventsHub.Path))
+            .WithUrl(navigation.ToAbsoluteUri(EventsHub.Path.TrimStart('/')))
             .WithAutomaticReconnect()
             .Build();
 

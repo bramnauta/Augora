@@ -16,6 +16,7 @@ namespace Augora.Core.Queue;
 public sealed class QueueManager
 {
     private const int MaxFollowing = 500;
+    private const int AutoplayBatch = 10;
     private static readonly TimeSpan MaxAnnouncement = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan MinResumeSeek = TimeSpan.FromSeconds(2);
 
@@ -72,7 +73,8 @@ public sealed class QueueManager
         QueueOption option,
         CancellationToken cancellationToken,
         string? takeoverPlayerId = null,
-        IReadOnlyList<string>? following = null) =>
+        IReadOnlyList<string>? following = null,
+        bool? autoplay = null) =>
         WithQueueAsync(playerId, async (queue, ct) =>
         {
             var player = _players.GetAvailable(playerId);
@@ -102,6 +104,11 @@ public sealed class QueueManager
                 {
                     _logger.LogDebug(ex, "Skipping {Uri} after {Item}", next, uri);
                 }
+            }
+
+            if (autoplay is { } enabled)
+            {
+                queue.Autoplay = enabled;
             }
 
             if (queue.Enqueue(items, option) is { } index)
@@ -328,7 +335,7 @@ public sealed class QueueManager
     private sealed record ResumePoint(string QueueItemId, TimeSpan? Position, StreamSource? Stream);
 
     public Task<QueueDto> NextAsync(string playerId, CancellationToken cancellationToken) =>
-        MoveAsync(playerId, q => q.GetNextIndex(), cancellationToken);
+        MoveAsync(playerId, q => q.GetNextIndex(), cancellationToken, explicitNext: true);
 
     public Task<QueueDto> PreviousAsync(string playerId, CancellationToken cancellationToken) =>
         MoveAsync(playerId, q => q.GetPreviousIndex(), cancellationToken);
@@ -347,6 +354,13 @@ public sealed class QueueManager
             return Task.FromResult(queue.ToDto());
         }, persist: true, cancellationToken);
 
+    public Task<QueueDto> SetAutoplayAsync(string playerId, bool autoplay, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, (queue, _) =>
+        {
+            queue.Autoplay = autoplay;
+            return Task.FromResult(queue.ToDto());
+        }, persist: true, cancellationToken);
+
     public Task<QueueDto> RemoveAsync(string playerId, string queueItemId, CancellationToken cancellationToken) =>
         WithQueueAsync(playerId, (queue, _) =>
         {
@@ -361,9 +375,49 @@ public sealed class QueueManager
             return Task.FromResult(queue.ToDto());
         }, persist: true, cancellationToken);
 
-    private Task<QueueDto> MoveAsync(string playerId, Func<PlayerQueue, int?> selectIndex, CancellationToken cancellationToken) =>
+    /// <summary>
+    /// Autoplay: at the end of the queue, adds tracks similar to the last item so there is a next one. Does nothing when
+    /// autoplay is off, the queue goes on by itself, or the provider has no similar tracks (radio stations).
+    /// </summary>
+    /// <returns>Whether items were added.</returns>
+    private async Task<bool> FillAutoplayAsync(PlayerQueue queue, bool explicitNext, CancellationToken cancellationToken)
+    {
+        var next = explicitNext ? queue.GetNextIndex() : queue.GetNextIndexAfterEnd();
+        if (!queue.Autoplay || next is not null || queue.Current is not { } seed)
+        {
+            return false;
+        }
+
+        try
+        {
+            var provider = _library.GetProvider(seed.Item.Ref.Provider);
+            var exclude = queue.Items.Select(i => i.Item.Ref).ToHashSet();
+            var similar = await provider.GetSimilarAsync(seed.Item, AutoplayBatch, exclude, cancellationToken);
+            var items = similar.Where(i => i.IsPlayable && !i.IsBrowsable && !exclude.Contains(i.Ref)).DistinctBy(i => i.Ref).ToList();
+            if (items.Count == 0)
+            {
+                return false;
+            }
+
+            _logger.LogInformation("Autoplay on {Player}: {Count} tracks after {Item}", queue.PlayerId, items.Count, seed.Item.Ref);
+            queue.Enqueue(items, QueueOption.Add);
+            return true;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or AugoraException)
+        {
+            _logger.LogWarning(ex, "Autoplay on {Player} could not find tracks after {Item}", queue.PlayerId, seed.Item.Ref);
+            return false;
+        }
+    }
+
+    private Task<QueueDto> MoveAsync(string playerId, Func<PlayerQueue, int?> selectIndex, CancellationToken cancellationToken, bool explicitNext = false) =>
         WithQueueAsync(playerId, async (queue, ct) =>
         {
+            if (explicitNext)
+            {
+                await FillAutoplayAsync(queue, explicitNext: true, ct);
+            }
+
             if (selectIndex(queue) is { } index)
             {
                 await PlayIndexAsync(_players.GetAvailable(playerId), queue, index, ct);
@@ -456,9 +510,14 @@ public sealed class QueueManager
         public async Task<MediaItem?> ContinueAsync(Func<MediaItem, bool> canPlay, TimeSpan streamOffset, CancellationToken cancellationToken)
         {
             MediaItem? next = null;
-            await manager.WithQueueAsync(player.Id, (queue, _) =>
+            await manager.WithQueueAsync(player.Id, async (queue, ct) =>
             {
                 var current = queue.CurrentIndex is { } index ? queue.Items[index].Id : null;
+                if (current == _queueItemId)
+                {
+                    await manager.FillAutoplayAsync(queue, explicitNext: false, ct);
+                }
+
                 if (current == _queueItemId && queue.GetNextIndexAfterEnd() is { } nextIndex && canPlay(queue.Items[nextIndex].Item))
                 {
                     queue.SetCurrent(nextIndex);
@@ -466,7 +525,7 @@ public sealed class QueueManager
                     next = queue.Items[nextIndex].Item;
                 }
 
-                return Task.FromResult(queue.ToDto());
+                return queue.ToDto();
             }, persist: true, cancellationToken);
 
             if (next is not null && Media is { } media)
@@ -500,7 +559,13 @@ public sealed class QueueManager
         {
             await WithQueueAsync(e.Player.Id, async (queue, ct) =>
             {
-                if (e.Reason == PlaybackEndReason.Error || queue.GetNextIndexAfterEnd() is not { } next)
+                if (e.Reason == PlaybackEndReason.Error)
+                {
+                    return queue.ToDto();
+                }
+
+                await FillAutoplayAsync(queue, explicitNext: false, ct);
+                if (queue.GetNextIndexAfterEnd() is not { } next)
                 {
                     return queue.ToDto();
                 }

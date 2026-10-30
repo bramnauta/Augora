@@ -38,6 +38,12 @@
   <data name="Error" xml:space="preserve"><value>Something went wrong</value></data>
   <data name="QueueEmpty" xml:space="preserve"><value>The queue is empty</value></data>
   <data name="ClearQueue" xml:space="preserve"><value>Clear queue</value></data>
+  <data name="Shuffle" xml:space="preserve"><value>Shuffle</value></data>
+  <data name="Repeat_Off" xml:space="preserve"><value>Repeat: off</value></data>
+  <data name="Repeat_All" xml:space="preserve"><value>Repeat: queue</value></data>
+  <data name="Repeat_One" xml:space="preserve"><value>Repeat: this track</value></data>
+  <data name="Autoplay" xml:space="preserve"><value>Autoplay</value></data>
+  <data name="AutoplayHint" xml:space="preserve"><value>Keep playing similar tracks when the queue ends</value></data>
   <data name="Remove" xml:space="preserve"><value>Remove</value></data>
   <data name="Reconnecting" xml:space="preserve"><value>Connection to the server lost, reconnecting...</value></data>
   <data name="Kind_Speaker" xml:space="preserve"><value>Speaker</value></data>

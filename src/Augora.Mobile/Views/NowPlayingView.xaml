@@ -5,7 +5,7 @@
              xmlns:vm="clr-namespace:Augora.Mobile.ViewModels"
              x:Class="Augora.Mobile.Views.NowPlayingView"
              x:DataType="vm:PlayerViewModel">
-    <Grid BackgroundColor="{StaticResource Background}" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto" Padding="24,8,24,16" RowSpacing="8">
+    <Grid BackgroundColor="{StaticResource Background}" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Padding="24,8,24,16" RowSpacing="8">
         <Grid ColumnDefinitions="44,*,44">
             <Grid BackgroundColor="Transparent">
                 <Grid.GestureRecognizers>
@@ -76,6 +76,14 @@
         <Grid Grid.Row="5" ColumnDefinitions="Auto,*" ColumnSpacing="12" IsVisible="{Binding CanSetVolume}">
             <v:Icon Kind="Volume" Fill="{StaticResource TextSecondary}" />
             <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=OneWay}" DragCompleted="OnVolumeCompleted" />
+        </Grid>
+
+        <Grid Grid.Row="6" ColumnDefinitions="Auto,*" ColumnSpacing="12" BackgroundColor="Transparent">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnAutoplay" />
+            </Grid.GestureRecognizers>
+            <v:Icon Kind="Autoplay" x:Name="AutoplayIcon" Fill="{StaticResource TextSecondary}" />
+            <Label Grid.Column="1" x:Name="AutoplayLabel" Style="{StaticResource Secondary}" VerticalTextAlignment="Center" />
         </Grid>
     </Grid>
 </ContentView>

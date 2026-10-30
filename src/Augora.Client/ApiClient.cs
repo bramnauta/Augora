@@ -138,6 +138,9 @@ public sealed class ApiClient(HttpClient http)
     public Task<QueueDto> SetRepeatAsync(string playerId, RepeatMode mode) =>
         SendAsync<QueueDto>(HttpMethod.Put, $"api/players/{Escape(playerId)}/queue/repeat?mode={mode}");
 
+    public Task<QueueDto> SetAutoplayAsync(string playerId, bool enabled) =>
+        SendAsync<QueueDto>(HttpMethod.Put, $"api/players/{Escape(playerId)}/queue/autoplay?enabled={(enabled ? "true" : "false")}");
+
     public Task<List<ManualCastDeviceDto>> GetManualCastDevicesAsync() => GetAsync<List<ManualCastDeviceDto>>("api/googlecast/devices");
 
     public Task<ManualCastDeviceDto> AddManualCastDeviceAsync(AddManualCastDeviceRequest request) =>

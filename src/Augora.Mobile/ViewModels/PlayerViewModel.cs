@@ -63,6 +63,9 @@ public sealed partial class PlayerViewModel : ObservableObject
     private bool _shuffle;
 
     [ObservableProperty]
+    private bool _autoplay;
+
+    [ObservableProperty]
     private RepeatMode _repeat;
 
     [ObservableProperty]
@@ -134,6 +137,8 @@ public sealed partial class PlayerViewModel : ObservableObject
 
     public Task ToggleShuffleAsync() => RunAsync(() => _app.Api.SetShuffleAsync(_store!.SelectedPlayerId!, !Shuffle));
 
+    public Task ToggleAutoplayAsync() => RunAsync(() => _app.Api.SetAutoplayAsync(_store!.SelectedPlayerId!, !Autoplay));
+
     public Task CycleRepeatAsync() => RunAsync(() => _app.Api.SetRepeatAsync(_store!.SelectedPlayerId!, Repeat switch
     {
         RepeatMode.Off => RepeatMode.All,
@@ -192,6 +197,7 @@ public sealed partial class PlayerViewModel : ObservableObject
         Volume = player?.Volume ?? 1;
         Shuffle = _store.SelectedQueue?.Shuffle ?? false;
         Repeat = _store.SelectedQueue?.Repeat ?? RepeatMode.Off;
+        Autoplay = _store.SelectedQueue?.Autoplay ?? false;
         RepeatIcon = Repeat == RepeatMode.One ? "RepeatOne" : "Repeat";
         PlaysOnThisDevice = _store.PlaysOnThisDevice;
         IsAvailable = player?.Available ?? PlaysOnThisDevice;

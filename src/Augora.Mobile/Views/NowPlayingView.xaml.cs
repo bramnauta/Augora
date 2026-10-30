@@ -25,7 +25,7 @@ public sealed partial class NowPlayingView : ContentView
         {
             PlayingOnLabel.Text = Strings.PlayingOn(_viewModel.PlayerName);
         }
-        else if (e.PropertyName is nameof(PlayerViewModel.Shuffle) or nameof(PlayerViewModel.Repeat))
+        else if (e.PropertyName is nameof(PlayerViewModel.Shuffle) or nameof(PlayerViewModel.Repeat) or nameof(PlayerViewModel.Autoplay))
         {
             UpdateToggles();
         }
@@ -37,6 +37,8 @@ public sealed partial class NowPlayingView : ContentView
         var quiet = (Color)Application.Current.Resources["TextSecondary"];
         ShuffleIcon.Fill = _viewModel.Shuffle ? accent : quiet;
         RepeatIcon.Fill = _viewModel.Repeat != Augora.Contracts.RepeatMode.Off ? accent : quiet;
+        AutoplayIcon.Fill = _viewModel.Autoplay ? accent : quiet;
+        AutoplayLabel.Text = Strings.Autoplay;
     }
 
     /// <summary>The artwork is a square as wide as the room allows.</summary>
@@ -57,6 +59,8 @@ public sealed partial class NowPlayingView : ContentView
     private async void OnPrevious(object? sender, TappedEventArgs e) => await _viewModel.PreviousAsync();
 
     private async void OnShuffle(object? sender, TappedEventArgs e) => await _viewModel.ToggleShuffleAsync();
+
+    private async void OnAutoplay(object? sender, TappedEventArgs e) => await _viewModel.ToggleAutoplayAsync();
 
     private async void OnRepeat(object? sender, TappedEventArgs e) => await _viewModel.CycleRepeatAsync();
 

@@ -31,6 +31,7 @@ from homeassistant.util import dt as dt_util
 from . import AugoraConfigEntry, AugoraHub
 from .api import AugoraError
 from .const import (
+    ATTR_AUTOPLAY,
     ATTR_MEDIA_ID,
     ATTR_RESUME,
     ATTR_VOLUME_LEVEL,
@@ -253,6 +254,8 @@ class AugoraMediaPlayer(MediaPlayerEntity):
     async def async_play_media(self, media_type: str, media_id: str, enqueue: MediaPlayerEnqueue | None = None, **kwargs: Any) -> None:
         """media_id is an Augora uri, e.g. tunein:radio:s24939 or spotify:playlist:...
 
+        extra.autoplay switches autoplay (track radio) on or off for the queue along with starting.
+
         With announce (tts.speak, assist) it is an announcement instead: a media source or url that plays once, after which
         the music continues. extra.volume sets a fixed volume for it.
         """
@@ -262,7 +265,8 @@ class AugoraMediaPlayer(MediaPlayerEntity):
             return
 
         option = ENQUEUE.get(enqueue, "Replace") if enqueue else "Replace"
-        await self._call(self._hub.client.play(self._player_id, media_id, option))
+        autoplay = (kwargs.get("extra") or {}).get(ATTR_AUTOPLAY)
+        await self._call(self._hub.client.play(self._player_id, media_id, option, None if autoplay is None else bool(autoplay)))
 
     async def async_announce(self, media_id: str, volume_level: float | None = None, resume: bool = True) -> None:
         """Entity service augora.announce: plays media_id (url or media source, e.g. TTS) and returns when it has ended."""

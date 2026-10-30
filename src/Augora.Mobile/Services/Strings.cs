@@ -31,7 +31,9 @@ internal static class Strings
 
     public static string Ok => "OK";
 
-    public static string Error => T("Mislukt", "Failed");
+    public static string Autoplay => T("Autoplay: blijf vergelijkbare nummers spelen", "Autoplay: keep playing similar tracks");
+
+    public static string Error =>T("Mislukt", "Failed");
 
     // Login
     public static string ConnectTitle => T("Verbinden met Augora", "Connect to Augora");

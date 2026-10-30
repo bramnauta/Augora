@@ -262,6 +262,29 @@ public sealed class SpotifyProvider : IMusicProvider
         }
     }
 
+    /// <summary>
+    /// Spotify no longer offers recommendations or related artists to apps like this one, so track radio plays more by the
+    /// artist of the seed (found with search), shuffled.
+    /// </summary>
+    public async Task<IReadOnlyList<MediaItem>> GetSimilarAsync(MediaItem seed, int count, IReadOnlySet<MediaItemRef> exclude, CancellationToken cancellationToken)
+    {
+        // The subtitle of a track is "Artist, Artist · Album".
+        var artist = seed.Subtitle?.Split(" · ")[0].Split(", ")[0];
+        if (seed.Type != MediaType.Track || string.IsNullOrWhiteSpace(artist) || (await _accounts.GetAccountsAsync(cancellationToken)).Count == 0)
+        {
+            return [];
+        }
+
+        var account = await GetApiAccountAsync(null, cancellationToken);
+        var result = await GetAsync(account, $"search?q={Escape($"artist:\"{artist}\"")}&type=track&limit={SmallPageSize}",
+            SpotifyJsonContext.Default.SpotifySearchResponse, cancellationToken);
+        var tracks = SpotifyMapper.NotNull((result.Tracks?.Items ?? []).Select(t => SpotifyMapper.Track(t)))
+            .Where(t => !exclude.Contains(t.Ref))
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(count);
+        return Remember(tracks);
+    }
+
     public async Task<StreamSource> ResolveStreamAsync(MediaItemRef item, PlaybackContext context, CancellationToken cancellationToken)
     {
         if (item.Type != MediaType.Track)

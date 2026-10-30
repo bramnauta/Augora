@@ -27,6 +27,8 @@ public sealed class PlayerQueue(string playerId)
 
     public RepeatMode Repeat { get; set; }
 
+    public bool Autoplay { get; set; }
+
     /// <summary>Applies <paramref name="option"/> and returns the index that should start playing, if any.</summary>
     public int? Enqueue(IReadOnlyList<MediaItem> items, QueueOption option)
     {
@@ -149,11 +151,11 @@ public sealed class PlayerQueue(string playerId)
     }
 
     public QueueDto ToDto() =>
-        new(PlayerId, _items.Select(i => new QueueItemDto(i.Id, i.Item.ToDto())).ToList(), CurrentIndex, Shuffle, Repeat);
+        new(PlayerId, _items.Select(i => new QueueItemDto(i.Id, i.Item.ToDto())).ToList(), CurrentIndex, Shuffle, Repeat, Autoplay);
 
     public static PlayerQueue FromDto(QueueDto dto)
     {
-        var queue = new PlayerQueue(dto.PlayerId) { Repeat = dto.Repeat, Shuffle = dto.Shuffle };
+        var queue = new PlayerQueue(dto.PlayerId) { Repeat = dto.Repeat, Shuffle = dto.Shuffle, Autoplay = dto.Autoplay };
         foreach (var item in dto.Items)
         {
             if (MediaItemRef.TryParse(item.Item.Uri, out _))

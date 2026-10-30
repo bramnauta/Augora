@@ -11,10 +11,27 @@
     <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-m-0">
         @L["Nav_Queue"]@(Store.SelectedPlayer is { } p ? $" · {p.Name}" : "")
     </RadzenText>
-    @if (Store.SelectedQueue is { Items.Count: > 0 })
+    @if (Store.SelectedPlayerId is not null)
     {
-        <RadzenButton Icon="clear_all" Text="@L["ClearQueue"]" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base"
-                      Click="@(() => Run(id => Api.ClearQueueAsync(id)))" />
+        var current = Store.SelectedQueue;
+        var repeat = current?.Repeat ?? RepeatMode.Off;
+        var repeatHint = L[$"Repeat_{repeat}"];
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
+            <RadzenButton Icon="shuffle" Variant="Variant.Text" title="@L["Shuffle"]"
+                          ButtonStyle="@(current?.Shuffle == true ? ButtonStyle.Primary : ButtonStyle.Base)"
+                          Click="@(() => Run(id => Api.SetShuffleAsync(id, current?.Shuffle != true)))" />
+            <RadzenButton Icon="@(repeat == RepeatMode.One ? "repeat_one" : "repeat")" Variant="Variant.Text" title="@repeatHint"
+                          ButtonStyle="@(repeat != RepeatMode.Off ? ButtonStyle.Primary : ButtonStyle.Base)"
+                          Click="@(() => Run(id => Api.SetRepeatAsync(id, NextRepeat(repeat))))" />
+            <RadzenButton Icon="radio" Text="@L["Autoplay"]" Variant="Variant.Text" title="@L["AutoplayHint"]"
+                          ButtonStyle="@(current?.Autoplay == true ? ButtonStyle.Primary : ButtonStyle.Base)"
+                          Click="@(() => Run(id => Api.SetAutoplayAsync(id, current?.Autoplay != true)))" />
+            @if (current is { Items.Count: > 0 })
+            {
+                <RadzenButton Icon="clear_all" Text="@L["ClearQueue"]" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base"
+                              Click="@(() => Run(id => Api.ClearQueueAsync(id)))" />
+            }
+        </RadzenStack>
     }
 </RadzenStack>
 
@@ -73,6 +90,13 @@ else
             Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message, duration: 8000);
         }
     }
+
+    private static RepeatMode NextRepeat(RepeatMode mode) => mode switch
+    {
+        RepeatMode.Off => RepeatMode.All,
+        RepeatMode.All => RepeatMode.One,
+        _ => RepeatMode.Off,
+    };
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
 

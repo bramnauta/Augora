@@ -121,6 +121,10 @@ class Api(private val session: Session) {
         send("PUT", url("api/players/${enc(playerId)}/queue/shuffle?enabled=$enabled"), null)
     }
 
+    suspend fun setAutoplay(playerId: String, enabled: Boolean) {
+        send("PUT", url("api/players/${enc(playerId)}/queue/autoplay?enabled=$enabled"), null)
+    }
+
     suspend fun setRepeat(playerId: String, mode: String) {
         send("PUT", url("api/players/${enc(playerId)}/queue/repeat?mode=$mode"), null)
     }

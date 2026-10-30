@@ -57,12 +57,13 @@ class ModelsTest {
     fun aQueueAndBrowseResultAreRead() {
         val queue = json.decodeFromString<Queue>(
             """
-            {"playerId":"remote:abc","currentIndex":0,"shuffle":false,"repeat":"Off","items":[
+            {"playerId":"remote:abc","currentIndex":0,"shuffle":false,"repeat":"Off","autoplay":true,"items":[
               {"id":"q1","item":{"uri":"local:track:1","type":"Track","name":"Song","subtitle":null,"imageUrl":null,
                                  "isPlayable":true,"isBrowsable":false,"provider":"local","duration":"00:03:25"}}]}
             """.trimIndent()
         )
         assertEquals(1, queue.items.size)
+        assertTrue(queue.autoplay)
         assertTrue(queue.items[0].item.isTrackLike)
 
         val browse = json.decodeFromString<BrowseResult>(

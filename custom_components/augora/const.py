@@ -14,5 +14,6 @@ SERVICE_ANNOUNCE = "announce"
 ATTR_MEDIA_ID = "media_id"
 ATTR_VOLUME_LEVEL = "volume_level"
 ATTR_RESUME = "resume"
+ATTR_AUTOPLAY = "autoplay"
 
 ERROR_NO_FREE_SPOTIFY_ACCOUNT = "spotify_no_free_account"

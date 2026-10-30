@@ -35,7 +35,7 @@ internal static class PlayerEndpoints
             .WithSummary("Forget a disconnected browser or app player.");
 
         players.MapPost("/{id}/play", (string id, PlayRequest request, QueueManager queues, CancellationToken ct) =>
-                queues.PlayAsync(id, request.Uri, request.Option, ct, request.TakeoverPlayerId, request.Following))
+                queues.PlayAsync(id, request.Uri, request.Option, ct, request.TakeoverPlayerId, request.Following, request.Autoplay))
             .WithSummary("Play or enqueue a media item. Albums and playlists enqueue their tracks.")
             .WithDescription("Returns 409 spotify_no_free_account (with the holders) when every Spotify account is streaming; "
                 + "repeat the request with takeoverPlayerId to stop one of them.");
@@ -75,6 +75,8 @@ internal static class PlayerEndpoints
         queue.MapPost("/items/{itemId}/play", (string id, string itemId, QueueManager queues, CancellationToken ct) => queues.PlayItemAsync(id, itemId, ct));
         queue.MapDelete("/items/{itemId}", (string id, string itemId, QueueManager queues, CancellationToken ct) => queues.RemoveAsync(id, itemId, ct));
         queue.MapPut("/shuffle", (string id, bool enabled, QueueManager queues, CancellationToken ct) => queues.SetShuffleAsync(id, enabled, ct));
+        queue.MapPut("/autoplay", (string id, bool enabled, QueueManager queues, CancellationToken ct) => queues.SetAutoplayAsync(id, enabled, ct))
+            .WithSummary("Track radio: when the queue ends, keep playing tracks similar to the last one.");
         queue.MapPut("/repeat", (string id, RepeatMode mode, QueueManager queues, CancellationToken ct) => queues.SetRepeatAsync(id, mode, ct));
 
         return app;

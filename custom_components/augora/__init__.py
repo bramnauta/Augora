@@ -14,7 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .api import AugoraAuthError, AugoraClient, AugoraError, AugoraEvents
 from .const import CONF_TOKEN, CONF_URL, SIGNAL_NEW_PLAYER, SIGNAL_PLAYER_UPDATED, SIGNAL_QUEUE_UPDATED
 
-PLATFORMS = [Platform.MEDIA_PLAYER]
+PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SWITCH]
 
 type AugoraConfigEntry = ConfigEntry[AugoraHub]
 

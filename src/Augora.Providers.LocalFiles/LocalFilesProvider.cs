@@ -138,6 +138,32 @@ public sealed class LocalFilesProvider : IMusicProvider
         return Task.FromResult(items);
     }
 
+    /// <summary>Other tracks by the same artist, then tracks from the same folder; the tags have no genre to go by.</summary>
+    public Task<IReadOnlyList<MediaItem>> GetSimilarAsync(MediaItem seed, int count, IReadOnlySet<MediaItemRef> exclude, CancellationToken cancellationToken)
+    {
+        var library = _scanner.Library;
+        if (seed.Type != MediaType.Track || !library.ByKey.TryGetValue(seed.Ref.Id, out var track))
+        {
+            return Task.FromResult<IReadOnlyList<MediaItem>>([]);
+        }
+
+        bool IsNew(LocalTrack t) => !exclude.Contains(Ref(MediaType.Track, t.Key));
+        var sameArtist = track.EffectiveArtist.Length > 0 && library.Artists.TryGetValue(track.EffectiveArtist, out var byArtist)
+            ? byArtist.Where(IsNew).ToList()
+            : [];
+        Random.Shared.Shuffle(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(sameArtist));
+
+        var picked = sameArtist.Take(count).ToList();
+        if (picked.Count < count)
+        {
+            var sameFolder = library.Tracks.Where(t => t.Folder == track.Folder && IsNew(t) && !picked.Contains(t)).ToList();
+            Random.Shared.Shuffle(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(sameFolder));
+            picked.AddRange(sameFolder.Take(count - picked.Count));
+        }
+
+        return Task.FromResult<IReadOnlyList<MediaItem>>(picked.Select(Track).ToList());
+    }
+
     public Task<StreamSource> ResolveStreamAsync(MediaItemRef item, PlaybackContext context, CancellationToken cancellationToken)
     {
         var path = item.Type == MediaType.Track ? FileForKey(item.Id) : null;

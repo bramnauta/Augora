@@ -89,6 +89,7 @@ data class Queue(
     val currentIndex: Int? = null,
     val shuffle: Boolean = false,
     val repeat: String = "Off",
+    val autoplay: Boolean = false,
 )
 
 // What this device exchanges with the server as a player (the remote player protocol).

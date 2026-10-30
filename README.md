@@ -160,6 +160,14 @@ data:
   enqueue: replace
 ```
 
+Shuffle, herhalen (alles/één) en autoplay (nummerradio) staan per wachtrij in de UI's (web: wachtrij-pagina,
+mobiel en TV: speler). In Home Assistant staan shuffle en herhalen op de mediaspeler en autoplay als
+schakelaar (`switch.<speler>_autoplay`). Ook bij het afspelen kan autoplay mee, bij `media_player.play_media`
+via `extra: {autoplay: true}` (REST: `autoplay` in `POST /api/players/{id}/play`). Is de wachtrij op, dan voegt
+de provider van het laatste nummer vergelijkbare nummers toe: lokale muziek kiest dezelfde artiest en daarna
+dezelfde map, Spotify kiest meer van dezelfde artiest (Spotify biedt aanbevelingen niet meer aan);
+radio en podcasts doen niets.
+
 Omroepen (TTS) op speakers of groepen, waarna de muziek vanaf het onderbrekingspunt verdergaat en het
 volume terugkeert. Een omroep op een speaker die in een draaiende groep speelt wordt geweigerd; omroepen
 op de groep zelf. De actie geeft pas antwoord als de omroep klaar is:

@@ -34,6 +34,13 @@
       "reauth_successful": "Het API-token is bijgewerkt."
     }
   },
+  "entity": {
+    "switch": {
+      "autoplay": {
+        "name": "Autoplay"
+      }
+    }
+  },
   "services": {
     "announce": {
       "name": "Omroepen",

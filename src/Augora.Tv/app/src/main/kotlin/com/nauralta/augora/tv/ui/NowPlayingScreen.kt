@@ -122,6 +122,11 @@ fun NowPlayingScreen(app: AugoraApp, onClose: () -> Unit, onPickPlayer: () -> Un
                         Icon(Icons.Speaker, contentDescription = null, modifier = Modifier.size(20.dp))
                         Text("  " + S.playOn, maxLines = 1)
                     }
+                    // Track radio: keep playing similar tracks when the queue ends.
+                    val autoplay = queue?.autoplay == true
+                    ControlButton(Icons.Autoplay, tint = if (autoplay) Accent else Color.White) {
+                        command { app.api.setAutoplay(selectedId, !autoplay) }
+                    }
                     if (now != null && !now.isLive && player?.canSeek == true) {
                         Button(onClick = { command { app.api.seek(selectedId, maxOf(0.0, position - 10)) } }) { Text("−10 s") }
                         Button(onClick = { command { app.api.seek(selectedId, position + 10) } }) { Text("+10 s") }

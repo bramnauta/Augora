@@ -69,8 +69,15 @@ class AugoraClient:
         path = "/api/browse" if not uri else f"/api/browse?uri={quote(uri, safe='')}"
         return await self._request("GET", path)
 
-    async def play(self, player_id: str, uri: str, option: str = "Replace") -> dict[str, Any]:
-        return await self._request("POST", f"/api/players/{quote(player_id, safe='')}/play", {"uri": uri, "option": option})
+    async def play(self, player_id: str, uri: str, option: str = "Replace", autoplay: bool | None = None) -> dict[str, Any]:
+        body: dict[str, Any] = {"uri": uri, "option": option}
+        if autoplay is not None:
+            body["autoplay"] = autoplay
+        return await self._request("POST", f"/api/players/{quote(player_id, safe='')}/play", body)
+
+    async def set_autoplay(self, player_id: str, enabled: bool) -> None:
+        """Track radio: keep playing similar tracks when the queue ends."""
+        await self._request("PUT", f"/api/players/{quote(player_id, safe='')}/queue/autoplay?enabled={str(enabled).lower()}")
 
     async def announce(
         self, player_id: str, url: str, volume: float | None = None, resume: bool = True, content_type: str | None = None

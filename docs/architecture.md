@@ -42,8 +42,8 @@ src/
   Augora.AndroidPlayer      Native Android-speler (foreground service, MediaPlayer, MediaSession), gedeeld door Mobile en AndroidTv
   Augora.Mobile             .NET MAUI-app voor telefoon en tablet (Android + iOS): native luister-UI + native speler
   Augora.AndroidTv          Android TV-app (WebView-UI + native speler)
-integrations/
-  homeassistant/custom_components/augora   Home Assistant-integratie (Python)
+custom_components/augora   Home Assistant-integratie (Python); in de root, zodat HACS/Marketplace hem kan installeren
+ha-app/                    Home Assistant-app (server als add-on)
 tests/
   Augora.Tests              xUnit v3
 docs/
@@ -271,7 +271,7 @@ eigen, kleine client (zelfde API en speler-protocol) in plaats van `Augora.Clien
 
 ## Home Assistant-integratie
 
-- Custom component `integrations/homeassistant/custom_components/augora` (config flow met URL +
+- Custom component `custom_components/augora` (config flow met URL +
   API-token, reauth bij een ingetrokken token).
 - `media_player` per Augora-speler; features volgen `PlayerFeatures`. Media browsing gebruikt
   `/api/browse`, `play_media` neemt Augora-URI's met `enqueue` → `QueueOption`.

@@ -129,8 +129,10 @@ bij elke release, anders biedt Home Assistant geen update aan.
 
 ### Integratie
 
-Kopieer `integrations/homeassistant/custom_components/augora` naar `config/custom_components/`
-van Home Assistant en herstart. Voeg de integratie toe met de URL van Augora en een API-token
+Installeer via de Marketplace van Home Assistant (2026.11 en nieuwer) of via HACS: voeg
+`https://github.com/bramnauta/Augora` toe als aangepaste repository (type Integratie) en installeer
+**Augora**. Handmatig kan ook: kopieer `custom_components/augora` naar `config/custom_components/`.
+Herstart Home Assistant. Voeg de integratie toe met de URL van Augora en een API-token
 (maak dat aan onder **Account**). Elke speler wordt een `media_player`:
 
 - afspelen, pauzeren, volgende/vorige, volume, mute, shuffle en herhalen;

@@ -14,6 +14,7 @@ public sealed class AugoraFactory : WebApplicationFactory<Program>
     {
         // UseSetting rather than ConfigureAppConfiguration: Program reads these before the app is built.
         builder.UseSetting("Augora:DataDirectory", _dataDirectory);
+        builder.UseSetting("Augora:AdvertiseMdns", "false");
         builder.UseSetting("Players:GoogleCast:Enabled", "false");
         builder.UseSetting("Providers:TuneIn:Enabled", "false");
         builder.UseEnvironment("Testing");

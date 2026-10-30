@@ -1,6 +1,14 @@
 {
   "config": {
+    "flow_title": "{name}",
     "step": {
+      "discovery_confirm": {
+        "title": "Augora found",
+        "description": "Augora was found at {url}. Create an API token under Account in the Augora UI.",
+        "data": {
+          "token": "API token"
+        }
+      },
       "user": {
         "title": "Augora",
         "description": "Create an API token under Account in the Augora UI.",

@@ -1,6 +1,14 @@
 {
   "config": {
+    "flow_title": "{name}",
     "step": {
+      "discovery_confirm": {
+        "title": "Augora gevonden",
+        "description": "Augora is gevonden op {url}. Maak een API-token aan onder Account in de Augora-UI.",
+        "data": {
+          "token": "API-token"
+        }
+      },
       "user": {
         "title": "Augora",
         "description": "Maak een API-token aan onder Account in de Augora-UI.",

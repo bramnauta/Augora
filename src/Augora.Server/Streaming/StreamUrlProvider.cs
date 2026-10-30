@@ -47,7 +47,7 @@ internal sealed class StreamUrlProvider(IOptions<AugoraOptions> options, IServer
         return url;
     }
 
-    private static int GetHttpPort(IServer server)
+    internal static int GetHttpPort(IServer server)
     {
         var addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses ?? [];
         foreach (var address in addresses)

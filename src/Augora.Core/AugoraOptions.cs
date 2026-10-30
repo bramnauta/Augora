@@ -20,6 +20,9 @@ public sealed class AugoraOptions
     /// <summary>Port used for auto-detected stream urls. Defaults to the first HTTP port the server listens on.</summary>
     public int? StreamPort { get; set; }
 
+    /// <summary>Announce the server on the local network (mDNS) so Home Assistant can discover it.</summary>
+    public bool AdvertiseMdns { get; set; } = true;
+
     /// <summary>Public url of the UI when running behind a reverse proxy. Used for links and OAuth callbacks.</summary>
     public string? PublicBaseUrl { get; set; }
 }

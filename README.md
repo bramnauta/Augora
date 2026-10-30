@@ -136,7 +136,10 @@ bij elke release, anders biedt Home Assistant geen update aan.
 Installeer via de Marketplace van Home Assistant (2026.11 en nieuwer) of via HACS: voeg
 `https://github.com/bramnauta/Augora` toe als aangepaste repository (type Integratie) en installeer
 **Augora**. Handmatig kan ook: kopieer `custom_components/augora` naar `config/custom_components/`.
-Herstart Home Assistant. Voeg de integratie toe met de URL van Augora en een API-token
+Herstart Home Assistant. De server meldt zich op het netwerk (mDNS, `_augora._tcp`): na de herstart
+toont Home Assistant bij Apparaten & services "Augora" als gevonden apparaat, en vraagt alleen nog om
+het API-token. Dat werkt in de HA-app en met macvlan, niet in een bridge-netwerk; zet het uit met
+`Augora__AdvertiseMdns=false`. Anders: voeg de integratie toe met de URL van Augora en een API-token
 (maak dat aan onder **Account**). Elke speler wordt een `media_player`:
 
 - afspelen, pauzeren, volgende/vorige, volume, mute, shuffle en herhalen;

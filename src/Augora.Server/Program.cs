@@ -14,6 +14,7 @@ using Augora.Providers.TuneIn;
 using Augora.Server;
 using Augora.Server.Auth;
 using Augora.Server.Data;
+using Augora.Server.Discovery;
 using Augora.Server.Endpoints;
 using Augora.Server.Realtime;
 using Augora.Server.Streaming;
@@ -52,6 +53,7 @@ builder.Services.AddSingleton<IPodcastStore, EfPodcastStore>();
 builder.Services.AddScoped<ISyncGroupStore, EfSyncGroupStore>();
 
 builder.Services.AddSingleton<IStreamUrlProvider, StreamUrlProvider>();
+builder.Services.AddHostedService<MdnsAdvertiser>();
 builder.Services.AddSingleton<IEventPublisher, SignalREventPublisher>();
 builder.Services.AddSingleton<IRemotePlayerChannel, SignalRRemotePlayerChannel>();
 builder.Services.AddSingleton<IQueueStore, EfQueueStore>();

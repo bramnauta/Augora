@@ -1,4 +1,5 @@
 using Augora.Contracts;
+using Augora.Core;
 using Augora.Core.Events;
 using Augora.Core.Media;
 using Augora.Core.Players;
@@ -14,6 +15,7 @@ public sealed class AutoplayTests
 {
     private readonly FakeMusicProvider _provider = new();
     private readonly FakePlayer _player = new();
+    private readonly FakeSimilarSource _source = new();
     private readonly QueueManager _queues;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -32,7 +34,78 @@ public sealed class AutoplayTests
             new NoEvents(),
             new NoUser(),
             new GroupMembership(),
-            NullLogger<QueueManager>.Instance);
+            NullLogger<QueueManager>.Instance,
+            _source);
+    }
+
+    [Fact]
+    public async Task Tracks_from_the_similar_source_are_looked_up_in_the_provider_and_preferred()
+    {
+        _source.Similar = [new("Artist B", "Song B"), new("Artist C", "Song C"), new("Unknown", "Nope")];
+        _provider.Known = ["Song B", "Song C"];
+        _provider.Similar = ["fake:track:8"];
+        await _queues.PlayAsync(_player.Id, "fake:track:1", QueueOption.Replace, Ct, autoplay: true);
+
+        _player.End();
+        await WaitForAsync(() => _player.Played.Count == 2);
+
+        var queue = await _queues.GetQueueAsync(_player.Id, Ct);
+        Assert.Equal(["fake:track:1", "fake:track:song-b", "fake:track:song-c"], queue.Items.Select(i => i.Item.Uri));
+        Assert.Equal(("Artist 1", "Track 1"), _source.Asked);
+    }
+
+    [Fact]
+    public async Task The_provider_chooses_when_the_similar_source_finds_nothing_usable()
+    {
+        _source.Similar = [new("Unknown", "Nope")];
+        _provider.Similar = ["fake:track:8"];
+        await _queues.PlayAsync(_player.Id, "fake:track:1", QueueOption.Replace, Ct, autoplay: true);
+
+        _player.End();
+        await WaitForAsync(() => _player.Played.Count == 2);
+
+        Assert.Equal("fake:track:8", _player.Played[1].ItemUri);
+    }
+
+    [Fact]
+    public async Task A_similar_source_without_a_key_is_not_asked()
+    {
+        _source.Configured = false;
+        _provider.Similar = ["fake:track:8"];
+        await _queues.PlayAsync(_player.Id, "fake:track:1", QueueOption.Replace, Ct, autoplay: true);
+
+        _player.End();
+        await WaitForAsync(() => _player.Played.Count == 2);
+
+        Assert.Null(_source.Asked);
+    }
+
+    [Fact]
+    public void Last_fm_answers_are_read()
+    {
+        using var ok = System.Text.Json.JsonDocument.Parse(
+            """{"similartracks":{"track":[{"name":"Song","artist":{"name":"Band"}},{"name":"","artist":{"name":"X"}}]}}""");
+        using var error = System.Text.Json.JsonDocument.Parse("""{"error":6,"message":"Track not found"}""");
+
+        Assert.Equal([new SimilarTrack("Band", "Song")], LastFmClient.Parse(ok.RootElement));
+        Assert.Empty(LastFmClient.Parse(error.RootElement));
+    }
+
+    private sealed class FakeSimilarSource : ISimilarTrackSource
+    {
+        public bool Configured { get; set; } = true;
+
+        public bool IsConfigured => Configured;
+
+        public SimilarTrack[] Similar { get; set; } = [];
+
+        public (string Artist, string Title)? Asked { get; private set; }
+
+        public Task<IReadOnlyList<SimilarTrack>> GetSimilarAsync(string artist, string title, int limit, CancellationToken cancellationToken)
+        {
+            Asked = (artist, title);
+            return Task.FromResult<IReadOnlyList<SimilarTrack>>(Similar);
+        }
     }
 
     [Fact]
@@ -125,8 +198,15 @@ public sealed class AutoplayTests
 
         public Task<IReadOnlyList<MediaItem>> SearchAsync(string query, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<MediaItem>>([]);
 
+        public string[] Known { get; set; } = [];
+
         public Task<MediaItem?> GetItemAsync(MediaItemRef item, CancellationToken cancellationToken) =>
-            Task.FromResult<MediaItem?>(new MediaItem(item, $"Track {item.Id}", IsPlayable: true, Duration: TimeSpan.FromMinutes(3)));
+            Task.FromResult<MediaItem?>(new MediaItem(item, $"Track {item.Id}", $"Artist {item.Id}", IsPlayable: true, Duration: TimeSpan.FromMinutes(3)));
+
+        public Task<MediaItem?> FindTrackAsync(string artist, string title, CancellationToken cancellationToken) =>
+            Task.FromResult<MediaItem?>(Known.Contains(title)
+                ? new MediaItem(MediaItemRef.Parse($"fake:track:{title.ToLowerInvariant().Replace(' ', '-')}"), title, IsPlayable: true)
+                : null);
 
         public Task<IReadOnlyList<MediaItem>> GetSimilarAsync(MediaItem seed, int count, IReadOnlySet<MediaItemRef> exclude, CancellationToken cancellationToken)
         {

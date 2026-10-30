@@ -63,8 +63,12 @@ public interface IMusicProvider
     Task<IReadOnlyList<MediaItem>> GetQueueItemsAsync(MediaItem item, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<MediaItem>>(item.IsPlayable ? [item] : []);
 
+    /// <summary>The playable track by <paramref name="artist"/> called <paramref name="title"/>, when the provider has it.</summary>
+    Task<MediaItem?> FindTrackAsync(string artist, string title, CancellationToken cancellationToken) =>
+        Task.FromResult<MediaItem?>(null);
+
     /// <summary>
-    /// Autoplay (track radio): up to <paramref name="count"/> playable tracks that fit after <paramref name="seed"/>, none of
+    /// Autoplay (track radio) without an outside source: up to <paramref name="count"/> playable tracks that fit after <paramref name="seed"/>, none of
     /// <paramref name="exclude"/>. Providers without a notion of similar music return nothing, and autoplay stops there.
     /// </summary>
     Task<IReadOnlyList<MediaItem>> GetSimilarAsync(MediaItem seed, int count, IReadOnlySet<MediaItemRef> exclude, CancellationToken cancellationToken) =>

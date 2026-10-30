@@ -17,11 +17,13 @@ public sealed class QueueManager
 {
     private const int MaxFollowing = 500;
     private const int AutoplayBatch = 10;
+    private const int SimilarCandidates = 15;
     private static readonly TimeSpan MaxAnnouncement = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan MinResumeSeek = TimeSpan.FromSeconds(2);
 
     private readonly ConcurrentDictionary<string, PlayerQueue> _queues = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ISimilarTrackSource? _similarSource;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _announceLocks = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, byte> _announcing = new(StringComparer.OrdinalIgnoreCase);
     private readonly PlayerManager _players;
@@ -46,8 +48,10 @@ public sealed class QueueManager
         IEventPublisher events,
         ICurrentUser currentUser,
         GroupMembership membership,
-        ILogger<QueueManager> logger)
+        ILogger<QueueManager> logger,
+        ISimilarTrackSource? similarSource = null)
     {
+        _similarSource = similarSource;
         _currentUser = currentUser;
         _membership = membership;
         _players = players;
@@ -392,7 +396,12 @@ public sealed class QueueManager
         {
             var provider = _library.GetProvider(seed.Item.Ref.Provider);
             var exclude = queue.Items.Select(i => i.Item.Ref).ToHashSet();
-            var similar = await provider.GetSimilarAsync(seed.Item, AutoplayBatch, exclude, cancellationToken);
+            var similar = await FindWithSimilarSourceAsync(provider, seed.Item, exclude, cancellationToken);
+            if (similar.Count == 0)
+            {
+                similar = await provider.GetSimilarAsync(seed.Item, AutoplayBatch, exclude, cancellationToken);
+            }
+
             var items = similar.Where(i => i.IsPlayable && !i.IsBrowsable && !exclude.Contains(i.Ref)).DistinctBy(i => i.Ref).ToList();
             if (items.Count == 0)
             {
@@ -407,6 +416,51 @@ public sealed class QueueManager
         {
             _logger.LogWarning(ex, "Autoplay on {Player} could not find tracks after {Item}", queue.PlayerId, seed.Item.Ref);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Autoplay through an outside source (Last.fm): the tracks that go with the seed, as far as the provider has them.
+    /// Empty when there is no source, it knows nothing, or it fails: the provider then chooses itself.
+    /// </summary>
+    private async Task<IReadOnlyList<MediaItem>> FindWithSimilarSourceAsync(
+        IMusicProvider provider, MediaItem seed, HashSet<MediaItemRef> exclude, CancellationToken cancellationToken)
+    {
+        // The subtitle of a track starts with its artist(s): "Artist, Artist · Album".
+        var artist = seed.Subtitle?.Split(" · ")[0].Split(", ")[0];
+        if (_similarSource is not { IsConfigured: true } source || seed.Type != MediaType.Track || string.IsNullOrWhiteSpace(artist))
+        {
+            return [];
+        }
+
+        try
+        {
+            var candidates = await source.GetSimilarAsync(artist, seed.Name, SimilarCandidates, cancellationToken);
+            using var gate = new SemaphoreSlim(4);
+            var found = await Task.WhenAll(candidates.Select(async candidate =>
+            {
+                await gate.WaitAsync(cancellationToken);
+                try
+                {
+                    return await provider.FindTrackAsync(candidate.Artist, candidate.Title, cancellationToken);
+                }
+                catch (Exception ex) when (ex is HttpRequestException or AugoraException)
+                {
+                    _logger.LogDebug(ex, "Looking up {Artist} - {Title} failed", candidate.Artist, candidate.Title);
+                    return null;
+                }
+                finally
+                {
+                    gate.Release();
+                }
+            }));
+
+            return found.OfType<MediaItem>().Where(i => !exclude.Contains(i.Ref)).DistinctBy(i => i.Ref).Take(AutoplayBatch).ToList();
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "The similar tracks of {Item} could not be fetched", seed.Ref);
+            return [];
         }
     }
 

@@ -30,6 +30,7 @@ services:
       Providers__LocalFiles__Folders__0__Path: /music
       # Client id of your app on developer.spotify.com (accounts can also bring their own).
       Providers__Spotify__ClientId: ${SPOTIFY_CLIENT_ID:-}
+      Augora__LastFmApiKey: ${LASTFM_API_KEY:-}
 
 networks:
   lan:

@@ -23,6 +23,12 @@ public sealed class AugoraOptions
     /// <summary>Announce the server on the local network (mDNS) so Home Assistant can discover it.</summary>
     public bool AdvertiseMdns { get; set; } = true;
 
+    /// <summary>
+    /// Last.fm API key (free, from last.fm/api). Autoplay asks Last.fm for tracks that go with the last one; without
+    /// a key the providers choose themselves (more by the same artist).
+    /// </summary>
+    public string? LastFmApiKey { get; set; }
+
     /// <summary>Public url of the UI when running behind a reverse proxy. Used for links and OAuth callbacks.</summary>
     public string? PublicBaseUrl { get; set; }
 }

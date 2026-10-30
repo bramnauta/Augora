@@ -16,6 +16,7 @@ opt Providers__Spotify__ClientId spotify_client_id
 opt Providers__TuneIn__Username tunein_username
 opt Augora__StreamBaseUrl stream_base_url
 opt Augora__PublicBaseUrl public_base_url
+opt Augora__LastFmApiKey lastfm_api_key
 
 # A boolean, so "false" must come through (the opt helper skips it).
 if [ "$(jq -r '.advertise_mdns' "$OPTIONS" 2>/dev/null || true)" = "false" ]; then

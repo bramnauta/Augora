@@ -68,8 +68,6 @@ internal sealed record SpotifySearchResponse(
     [property: JsonPropertyName("artists")] SpotifyPaging<SpotifyArtist>? Artists,
     [property: JsonPropertyName("playlists")] SpotifyPaging<SpotifyPlaylist>? Playlists);
 
-internal sealed record SpotifyRecommendations([property: JsonPropertyName("tracks")] IReadOnlyList<SpotifyTrack?>? Tracks);
-
 internal sealed record SpotifyUser(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("display_name")] string? DisplayName);
@@ -91,8 +89,6 @@ internal sealed record SpotifyTokenResponse(
 [JsonSerializable(typeof(SpotifyPaging<SpotifyAlbum>))]
 [JsonSerializable(typeof(SpotifyPaging<SpotifyTrack>))]
 [JsonSerializable(typeof(SpotifyFollowedArtists))]
-[JsonSerializable(typeof(SpotifySearchResponse))]
-[JsonSerializable(typeof(SpotifyRecommendations))]
-[JsonSerializable(typeof(SpotifyUser))]
+[JsonSerializable(typeof(SpotifySearchResponse))][JsonSerializable(typeof(SpotifyUser))]
 [JsonSerializable(typeof(SpotifyTokenResponse))]
 internal sealed partial class SpotifyJsonContext : JsonSerializerContext;

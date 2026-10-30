@@ -23,6 +23,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GroupMembership>();
         services.AddHostedService(sp => sp.GetRequiredService<PlayerManager>());
         services.AddSingleton<QueueManager>();
+        services.AddSingleton<LastFmClient>();
+        services.AddSingleton<ISimilarTrackSource>(sp => sp.GetRequiredService<LastFmClient>());
+        services.AddHttpClient(LastFmClient.HttpClientName, client =>
+        {
+            client.BaseAddress = new Uri("https://ws.audioscrobbler.com/2.0/");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Augora/1.0");
+        });
 
         services.AddSingleton<StreamSessionManager>();
         services.AddSingleton<StreamRelay>();

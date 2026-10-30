@@ -138,6 +138,13 @@ public sealed class LocalFilesProvider : IMusicProvider
         return Task.FromResult(items);
     }
 
+    public Task<MediaItem?> FindTrackAsync(string artist, string title, CancellationToken cancellationToken)
+    {
+        bool Same(string? a, string b) => string.Equals(a?.Trim(), b.Trim(), StringComparison.CurrentCultureIgnoreCase);
+        var track = _scanner.Library.Tracks.FirstOrDefault(t => Same(t.Title, title) && (Same(t.Artist, artist) || Same(t.AlbumArtist, artist)));
+        return Task.FromResult(track is null ? null : (MediaItem?)Track(track));
+    }
+
     /// <summary>Other tracks by the same artist, then tracks from the same folder; the tags have no genre to go by.</summary>
     public Task<IReadOnlyList<MediaItem>> GetSimilarAsync(MediaItem seed, int count, IReadOnlySet<MediaItemRef> exclude, CancellationToken cancellationToken)
     {

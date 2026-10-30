@@ -164,9 +164,12 @@ Shuffle, herhalen (alles/één) en autoplay (nummerradio) staan per wachtrij in 
 mobiel en TV: speler). In Home Assistant staan shuffle en herhalen op de mediaspeler en autoplay als
 schakelaar (`switch.<speler>_autoplay`). Ook bij het afspelen kan autoplay mee, bij `media_player.play_media`
 via `extra: {autoplay: true}` (REST: `autoplay` in `POST /api/players/{id}/play`). Is de wachtrij op, dan voegt
-de provider van het laatste nummer vergelijkbare nummers toe: lokale muziek kiest dezelfde artiest en daarna
-dezelfde map, Spotify kiest meer van dezelfde artiest (Spotify biedt aanbevelingen niet meer aan);
-radio en podcasts doen niets.
+dan nummers toe die bij het laatste nummer passen. Die komen van Last.fm (`track.getSimilar`): maak gratis een
+API-key aan op last.fm/api en zet die in `Augora__LastFmApiKey` (HA-app: optie `lastfm_api_key`, Docker:
+`LASTFM_API_KEY`). Augora zoekt de genoemde nummers op in Spotify of in je lokale muziek en voegt de gevonden
+toe. Zonder key, of als niets gevonden wordt, kiest de provider zelf: lokale muziek dezelfde artiest en daarna
+dezelfde map, Spotify meer van dezelfde artiest (Spotify biedt aanbevelingen niet meer aan). Radio en
+podcasts doen niets.
 
 Omroepen (TTS) op speakers of groepen, waarna de muziek vanaf het onderbrekingspunt verdergaat en het
 volume terugkeert. Een omroep op een speaker die in een draaiende groep speelt wordt geweigerd; omroepen

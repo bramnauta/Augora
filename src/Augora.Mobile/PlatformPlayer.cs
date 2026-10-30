@@ -9,4 +9,7 @@ internal static partial class PlatformPlayer
 
     /// <summary>Makes the device a player. Safe to call again.</summary>
     internal static partial void Start(AppSettings settings, ServerClient server);
+
+    /// <summary>Stops being a player, e.g. after logging out.</summary>
+    internal static partial void Stop();
 }

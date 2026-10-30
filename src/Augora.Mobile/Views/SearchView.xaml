@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:v="clr-namespace:Augora.Mobile.Views"
+             xmlns:vm="clr-namespace:Augora.Mobile.ViewModels"
+             x:Class="Augora.Mobile.Views.SearchView"
+             x:DataType="vm:SearchViewModel">
+    <Grid RowDefinitions="Auto,Auto,*">
+        <Label x:Name="TitleLabel" Style="{StaticResource Title}" Margin="24,16,24,8" />
+        <Border Grid.Row="1" BackgroundColor="{StaticResource SurfaceRaised}" StrokeThickness="0" StrokeShape="RoundRectangle 24"
+                Margin="16,0,16,8" Padding="16,0">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <v:Icon Kind="Search" Fill="{StaticResource TextSecondary}" />
+                <Entry x:Name="QueryEntry" Grid.Column="1" ReturnType="Search" Completed="OnSearch" ClearButtonVisibility="WhileEditing" />
+            </Grid>
+        </Border>
+
+        <ActivityIndicator Grid.Row="2" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource Accent}"
+                           VerticalOptions="Start" Margin="0,24" />
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Groups}" IsGrouped="True">
+            <CollectionView.EmptyView>
+                <Label Text="{Binding Message}" Style="{StaticResource Secondary}" HorizontalTextAlignment="Center" Margin="32" />
+            </CollectionView.EmptyView>
+            <CollectionView.GroupHeaderTemplate>
+                <DataTemplate x:DataType="vm:MediaGroup">
+                    <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="18" Margin="16,16,16,4" />
+                </DataTemplate>
+            </CollectionView.GroupHeaderTemplate>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:MediaRow">
+                    <v:MediaRowView />
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentView>

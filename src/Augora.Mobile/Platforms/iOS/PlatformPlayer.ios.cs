@@ -23,7 +23,7 @@ internal static partial class PlatformPlayer
         controller.Start();
     }
 
-    private static void Stop()
+    internal static partial void Stop()
     {
         var controller = _controller;
         _controller = null;

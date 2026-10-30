@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:v="clr-namespace:Augora.Mobile.Views"
+             xmlns:vm="clr-namespace:Augora.Mobile.ViewModels"
+             x:Class="Augora.Mobile.Views.NowPlayingView"
+             x:DataType="vm:PlayerViewModel">
+    <Grid BackgroundColor="{StaticResource Background}" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto" Padding="24,8,24,16" RowSpacing="8">
+        <Grid ColumnDefinitions="44,*,44">
+            <Grid BackgroundColor="Transparent">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnClose" />
+                </Grid.GestureRecognizers>
+                <v:Icon Kind="Down" WidthRequest="28" HeightRequest="28" />
+            </Grid>
+            <Label Grid.Column="1" x:Name="PlayingOnLabel" Style="{StaticResource Secondary}" HorizontalTextAlignment="Center" VerticalOptions="Center" />
+        </Grid>
+
+        <Border Grid.Row="1" BackgroundColor="{StaticResource Surface}" StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                HorizontalOptions="Center" VerticalOptions="Center" MaximumWidthRequest="420" MaximumHeightRequest="420"
+                SizeChanged="OnArtworkSizeChanged" x:Name="Artwork">
+            <Grid>
+                <v:Icon Kind="Note" Fill="{StaticResource TextSecondary}" WidthRequest="64" HeightRequest="64" />
+                <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
+            </Grid>
+        </Border>
+
+        <VerticalStackLayout Grid.Row="2" Spacing="4" Margin="0,8,0,0">
+            <Label Text="{Binding Title}" FontSize="22" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+            <Label Text="{Binding Subtitle}" Style="{StaticResource Secondary}" FontSize="16" LineBreakMode="TailTruncation" />
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="3" IsVisible="{Binding CanSeek}">
+            <Slider x:Name="SeekSlider" Minimum="0" Maximum="{Binding Duration}" Value="{Binding Position, Mode=OneWay}"
+                    DragStarted="OnSeekStarted" DragCompleted="OnSeekCompleted" />
+            <Grid ColumnDefinitions="*,*">
+                <Label Text="{Binding PositionText}" Style="{StaticResource Secondary}" />
+                <Label Grid.Column="1" Text="{Binding DurationText}" Style="{StaticResource Secondary}" HorizontalTextAlignment="End" />
+            </Grid>
+        </VerticalStackLayout>
+
+        <Grid Grid.Row="4" ColumnDefinitions="*,*,1.4*,*,*" HeightRequest="72">
+            <Grid BackgroundColor="Transparent">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnShuffle" />
+                </Grid.GestureRecognizers>
+                <v:Icon Kind="Shuffle" x:Name="ShuffleIcon" Fill="{StaticResource TextSecondary}" />
+            </Grid>
+            <Grid Grid.Column="1" BackgroundColor="Transparent">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnPrevious" />
+                </Grid.GestureRecognizers>
+                <v:Icon Kind="Previous" WidthRequest="36" HeightRequest="36" />
+            </Grid>
+            <Border Grid.Column="2" BackgroundColor="{StaticResource Accent}" StrokeThickness="0" StrokeShape="RoundRectangle 36"
+                    WidthRequest="72" HeightRequest="72">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnPlayPause" />
+                </Border.GestureRecognizers>
+                <v:Icon Kind="{Binding PlayPauseIcon}" Fill="{StaticResource OnAccent}" WidthRequest="40" HeightRequest="40" />
+            </Border>
+            <Grid Grid.Column="3" BackgroundColor="Transparent">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnNext" />
+                </Grid.GestureRecognizers>
+                <v:Icon Kind="Next" WidthRequest="36" HeightRequest="36" />
+            </Grid>
+            <Grid Grid.Column="4" BackgroundColor="Transparent">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnRepeat" />
+                </Grid.GestureRecognizers>
+                <v:Icon Kind="{Binding RepeatIcon}" x:Name="RepeatIcon" Fill="{StaticResource TextSecondary}" />
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Row="5" ColumnDefinitions="Auto,*" ColumnSpacing="12" IsVisible="{Binding CanSetVolume}">
+            <v:Icon Kind="Volume" Fill="{StaticResource TextSecondary}" />
+            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=OneWay}" DragCompleted="OnVolumeCompleted" />
+        </Grid>
+    </Grid>
+</ContentView>

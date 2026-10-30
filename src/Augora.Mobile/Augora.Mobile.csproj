@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The phone and tablet app: the web UI in a WebView plus a native player, on Android and iOS.
+  <!-- The phone and tablet app: a native listening UI plus a native player, on Android and iOS.
        Android TV has its own app (Augora.AndroidTv). iOS can only be built on a Mac (or paired to one from Visual Studio). -->
   <PropertyGroup>
     <!-- Directory.Build.props sets TargetFramework, which would turn this into a single-target project. -->
@@ -23,6 +23,9 @@
 
     <!-- SignalR and the contracts are (de)serialised with reflection; trim only the framework. -->
     <TrimMode>partial</TrimMode>
+
+    <!-- CA1001: pages and the session state live as long as the app, there is nothing to dispose them with. -->
+    <NoWarn>$(NoWarn);CA1001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,6 +34,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
     <ProjectReference Include="..\Augora.Client\Augora.Client.csproj" />
   </ItemGroup>
 

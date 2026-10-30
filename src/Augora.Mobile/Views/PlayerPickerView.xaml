@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:v="clr-namespace:Augora.Mobile.Views"
+             xmlns:vm="clr-namespace:Augora.Mobile.ViewModels"
+             x:Class="Augora.Mobile.Views.PlayerPickerView"
+             x:DataType="vm:PlayerViewModel">
+    <Grid BackgroundColor="#99000000" RowDefinitions="*,Auto">
+        <Grid.GestureRecognizers>
+            <TapGestureRecognizer Tapped="OnClose" />
+        </Grid.GestureRecognizers>
+
+        <Border Grid.Row="1" BackgroundColor="{StaticResource Surface}" StrokeThickness="0" StrokeShape="RoundRectangle 20,20,0,0"
+                Padding="0,16,0,16" MaximumHeightRequest="520">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnSheetTapped" />
+            </Border.GestureRecognizers>
+            <Grid RowDefinitions="Auto,*,Auto">
+                <Label x:Name="TitleLabel" Style="{StaticResource Title}" FontSize="20" Margin="24,0,24,8" />
+                <Button Grid.Row="2" x:Name="LogOutButton" Style="{StaticResource Quiet}" Clicked="OnLogOut" HorizontalOptions="Center" />
+                <CollectionView Grid.Row="1" ItemsSource="{Binding Players}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PlayerRow">
+                            <Grid ColumnDefinitions="32,*,32" ColumnSpacing="12" Padding="24,10" BackgroundColor="Transparent">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnPick" />
+                                </Grid.GestureRecognizers>
+                                <v:Icon Kind="Speaker" Fill="{StaticResource TextSecondary}" />
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                    <Label Text="{Binding Name}" FontSize="16" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Subtitle}" Style="{StaticResource Secondary}" LineBreakMode="TailTruncation" />
+                                </VerticalStackLayout>
+                                <v:Icon Grid.Column="2" Kind="Check" Fill="{StaticResource Accent}" IsVisible="{Binding IsSelected}" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </Border>
+    </Grid>
+</ContentView>

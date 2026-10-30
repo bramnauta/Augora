@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:v="clr-namespace:Augora.Mobile.Views"
+             x:Class="Augora.Mobile.Views.RootPage"
+             BackgroundColor="{StaticResource Background}"
+             SafeAreaEdges="All">
+    <Grid RowDefinitions="*,Auto,Auto">
+        <ContentView x:Name="Host" />
+
+        <v:MiniPlayerView Grid.Row="1" />
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" BackgroundColor="{StaticResource Surface}" Padding="0,8,0,4">
+            <VerticalStackLayout x:Name="HomeTab" Spacing="2" BackgroundColor="Transparent">
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnHomeTab" />
+                </VerticalStackLayout.GestureRecognizers>
+                <v:Icon x:Name="HomeIcon" Kind="Home" />
+                <Label x:Name="HomeLabel" FontSize="11" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+            <VerticalStackLayout x:Name="SearchTab" Grid.Column="1" Spacing="2" BackgroundColor="Transparent">
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSearchTab" />
+                </VerticalStackLayout.GestureRecognizers>
+                <v:Icon x:Name="SearchIcon" Kind="Search" />
+                <Label x:Name="SearchLabel" FontSize="11" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+            <VerticalStackLayout x:Name="QueueTab" Grid.Column="2" Spacing="2" BackgroundColor="Transparent">
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnQueueTab" />
+                </VerticalStackLayout.GestureRecognizers>
+                <v:Icon x:Name="QueueIcon" Kind="Queue" />
+                <Label x:Name="QueueLabel" FontSize="11" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <Border x:Name="ToastBorder" Grid.Row="0" Grid.RowSpan="2" IsVisible="False" VerticalOptions="End" HorizontalOptions="Center"
+                Margin="16,0,16,96" Padding="16,10" BackgroundColor="{StaticResource SurfaceRaised}" StrokeThickness="0"
+                StrokeShape="RoundRectangle 20">
+            <Label x:Name="ToastLabel" FontSize="14" />
+        </Border>
+
+        <v:NowPlayingView x:Name="NowPlaying" Grid.RowSpan="3" IsVisible="False" />
+        <v:PlayerPickerView x:Name="Picker" Grid.RowSpan="3" IsVisible="False" />
+    </Grid>
+</ContentPage>

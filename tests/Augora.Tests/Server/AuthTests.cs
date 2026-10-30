@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Augora.Contracts;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Augora.Tests.Server;
 
@@ -64,6 +65,30 @@ public sealed class AuthTests : IDisposable
         bearerClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
         Assert.Equal(HttpStatusCode.OK, (await bearerClient.GetAsync("/api/players", Ct)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await bearerClient.PostAsync("/api/auth/token", null, Ct)).StatusCode);
+    }
+
+    [Fact]
+    public async Task An_app_exchanges_the_one_time_code_of_a_browser_login_for_tokens_once()
+    {
+        // The system browser holds the cookie session; the app only ever sees the code in the redirect.
+        var browser = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true, AllowAutoRedirect = false });
+        (await browser.PostAsJsonAsync("/api/auth/setup", new SetupRequest("admin", AdminPassword), Ct)).EnsureSuccessStatusCode();
+
+        var complete = await browser.GetAsync(AppAuth.CompletePath, Ct);
+        Assert.Equal(HttpStatusCode.Redirect, complete.StatusCode);
+        var location = complete.Headers.Location!.OriginalString;
+        Assert.StartsWith($"{AppAuth.RedirectScheme}://auth?code=", location, StringComparison.Ordinal);
+        var code = location[(location.IndexOf("code=", StringComparison.Ordinal) + 5)..];
+
+        var app = _factory.CreateClient();
+        var exchange = await app.PostAsJsonAsync("/api/auth/app/token", new AppTokenRequest(code), Ct);
+        exchange.EnsureSuccessStatusCode();
+        var tokens = await exchange.Content.ReadFromJsonAsync<AccessTokenResponse>(Ct);
+        app.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
+        Assert.Equal(HttpStatusCode.OK, (await app.GetAsync("/api/players", Ct)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _factory.CreateClient().PostAsJsonAsync("/api/auth/app/token", new AppTokenRequest(code), Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _factory.CreateClient().PostAsJsonAsync("/api/auth/app/token", new AppTokenRequest("made-up"), Ct)).StatusCode);
     }
 
     [Fact]

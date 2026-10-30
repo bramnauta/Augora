@@ -1,4 +1,5 @@
-using Microsoft.Maui.Handlers;
+using Augora.Mobile.Services;
+using Augora.Mobile.ViewModels;
 
 namespace Augora.Mobile;
 
@@ -9,8 +10,14 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>();
 
-        WebViewHandler.Mapper.AppendToMapping("Augora", (handler, _) => PlatformWeb.ConfigureHandler(handler));
+        builder.Services.AddSingleton<AppState>();
+        builder.Services.AddSingleton<Navigator>();
+        builder.Services.AddSingleton<PlayService>();
+        builder.Services.AddSingleton<PlayerViewModel>();
+        builder.Services.AddSingleton<QueueViewModel>();
 
-        return builder.Build();
+        var app = builder.Build();
+        Ioc.Services = app.Services;
+        return app;
     }
 }

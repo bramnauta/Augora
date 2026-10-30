@@ -259,10 +259,4 @@ public sealed class PlayerController : IAsyncDisposable
     }
 
     private void ApplyVolume() => _backend.SetVolume(_muted ? 0 : _volume);
-
-    private sealed class RetryForever : IRetryPolicy
-    {
-        public TimeSpan? NextRetryDelay(RetryContext retryContext) =>
-            TimeSpan.FromSeconds(Math.Min(30, 2 + retryContext.PreviousRetryCount * 2));
-    }
 }

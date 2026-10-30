@@ -9,4 +9,11 @@
       android:supportsRtl="true"
       android:usesCleartextTraffic="true">
   </application>
+
+  <!-- Logging in with OIDC opens a Custom Tab; Android 11+ only lets the app see the browsers it declares. -->
+  <queries>
+    <intent>
+      <action android:name="android.support.customtabs.action.CustomTabsService" />
+    </intent>
+  </queries>
 </manifest>

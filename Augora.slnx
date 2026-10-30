@@ -1,7 +1,6 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Augora.AndroidPlayer/Augora.AndroidPlayer.csproj" />
-    <Project Path="src/Augora.AndroidTv/Augora.AndroidTv.csproj" />
     <Project Path="src/Augora.Client/Augora.Client.csproj" />
     <Project Path="src/Augora.Mobile/Augora.Mobile.csproj" />
     <Project Path="src/Augora.Players.Groups/Augora.Players.Groups.csproj" />

@@ -25,6 +25,21 @@ public sealed record AccessTokenResponse(string TokenType, string AccessToken, l
 
 public sealed record RefreshRequest(string RefreshToken);
 
+/// <summary>How the native apps log in with OIDC: through the system browser, ending in <c>augora://auth?code=...</c>.</summary>
+public static class AppAuth
+{
+    /// <summary>The URL scheme of the redirect back into the app.</summary>
+    public const string RedirectScheme = "augora";
+
+    /// <summary>Open this in the system browser (with <c>?returnUrl=</c> <see cref="CompletePath"/>) to start the login.</summary>
+    public const string ExternalPath = "/api/auth/external/";
+
+    public const string CompletePath = "/api/auth/app/complete";
+}
+
+/// <summary>The one-time code the app got in the redirect; answered with an <see cref="AccessTokenResponse"/>.</summary>
+public sealed record AppTokenRequest(string Code);
+
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
 public sealed record CreateUserRequest(string UserName, string Password, string? DisplayName, bool IsAdmin);

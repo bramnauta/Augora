@@ -15,6 +15,9 @@ internal static class AuthEndpoints
 {
     private static readonly SemaphoreSlim SetupLock = new(1, 1);
 
+    /// <summary>The URL scheme the native apps register for the end of an OIDC login.</summary>
+    private const string AppRedirectScheme = AppAuth.RedirectScheme;
+
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         var auth = app.MapGroup("/api/auth").WithTags("Authentication");
@@ -104,6 +107,30 @@ internal static class AuthEndpoints
             })
             .RequireAuthorization(new AuthorizationPolicyBuilder(IdentityConstants.ApplicationScheme).RequireAuthenticatedUser().Build())
             .WithSummary("Exchange the cookie session for an access and refresh token (used by the Android app).");
+
+        // Apps log in with OIDC through the system browser: it opens /external/{scheme}?returnUrl=/api/auth/app/complete,
+        // which ends here with a cookie session. The code in the redirect to the app's own scheme is exchanged for tokens.
+        auth.MapGet("/app/complete", async Task<Results<RedirectHttpResult, ChallengeHttpResult>> (ClaimsPrincipal principal, UserManager<AppUser> users, AppLoginCodes codes) =>
+            {
+                if (await users.GetUserAsync(principal) is not { } user)
+                {
+                    return TypedResults.Challenge();
+                }
+
+                return TypedResults.Redirect($"{AppRedirectScheme}://auth?code={codes.Create(user.Id)}");
+            })
+            .RequireAuthorization(new AuthorizationPolicyBuilder(IdentityConstants.ApplicationScheme).RequireAuthenticatedUser().Build())
+            .ExcludeFromDescription();
+
+        auth.MapPost("/app/token", async Task<Results<SignInHttpResult, ChallengeHttpResult>> (AppTokenRequest request, AppLoginCodes codes, SignInManager<AppUser> signIn) =>
+        {
+            if (codes.Redeem(request.Code) is not { } userId || await signIn.UserManager.FindByIdAsync(userId) is not { } user)
+            {
+                return TypedResults.Challenge();
+            }
+
+            return TypedResults.SignIn(await signIn.CreateUserPrincipalAsync(user), authenticationScheme: IdentityConstants.BearerScheme);
+        }).AllowAnonymous().WithSummary("Exchange the one-time code of an app's OIDC login for an access and refresh token.");
 
         auth.MapPost("/logout", async (SignInManager<AppUser> signIn) =>
         {

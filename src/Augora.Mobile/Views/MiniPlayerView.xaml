@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:v="clr-namespace:Augora.Mobile.Views"
+             xmlns:vm="clr-namespace:Augora.Mobile.ViewModels"
+             x:Class="Augora.Mobile.Views.MiniPlayerView"
+             x:DataType="vm:PlayerViewModel">
+    <Border BackgroundColor="{StaticResource SurfaceRaised}" StrokeThickness="0" StrokeShape="RoundRectangle 10" Margin="8,0,8,6">
+        <Grid RowDefinitions="Auto,2" BackgroundColor="Transparent">
+            <Grid ColumnDefinitions="48,*,44,44" ColumnSpacing="10" Padding="8,8,4,8">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnOpen" />
+                </Grid.GestureRecognizers>
+                <Border WidthRequest="48" HeightRequest="48" BackgroundColor="{StaticResource Surface}" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 6">
+                    <Grid>
+                        <v:Icon Kind="Note" Fill="{StaticResource TextSecondary}" WidthRequest="20" HeightRequest="20" />
+                        <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
+                    </Grid>
+                </Border>
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                    <Label Text="{Binding Title}" LineBreakMode="TailTruncation" FontAttributes="Bold" />
+                    <Label Text="{Binding PlayerName}" Style="{StaticResource Secondary}" LineBreakMode="TailTruncation" />
+                </VerticalStackLayout>
+                <Grid Grid.Column="2" BackgroundColor="Transparent">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnPickPlayer" />
+                    </Grid.GestureRecognizers>
+                    <v:Icon Kind="Speaker" Fill="{StaticResource Accent}" WidthRequest="22" HeightRequest="22" />
+                </Grid>
+                <Grid Grid.Column="3" BackgroundColor="Transparent">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnPlayPause" />
+                    </Grid.GestureRecognizers>
+                    <v:Icon Kind="{Binding PlayPauseIcon}" WidthRequest="28" HeightRequest="28" />
+                </Grid>
+            </Grid>
+            <ProgressBar Grid.Row="1" Progress="{Binding Progress}" ProgressColor="{StaticResource Accent}" BackgroundColor="Transparent" />
+        </Grid>
+    </Border>
+</ContentView>

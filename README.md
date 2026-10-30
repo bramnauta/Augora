@@ -70,19 +70,32 @@ Over Soloist:
 | App | Project | Platform |
 |---|---|---|
 | Telefoon en tablet | `src/Augora.Mobile` (.NET MAUI) | Android 8.0+ en iOS 15+ |
-| Android TV | `src/Augora.AndroidTv` (.NET for Android) | Android TV, Android 8.0+ |
+| Android TV | `src/Augora.Tv` (Kotlin, Jetpack Compose for TV) | Android TV, Android 8.0+ |
 
-Bij de eerste start vraagt de app het serveradres. Daarna toont hij de gewone UI, waar je inlogt (ook met
-OIDC). De app wisselt die sessie in voor tokens (`POST /api/auth/token`) en meldt het toestel aan als
-speler. Het afspelen loopt native, met mediabediening op het vergrendelscherm en via
-Bluetooth/TV-afstandsbediening. Een ander serveradres instellen: app-gegevens wissen, of de server
-onbereikbaar maken (dan verschijnt het adresscherm).
+De telefoon-app is een eigen, native app met Home, Zoeken en Wachtrij, een miniplayer en een afspeelscherm.
+Hij speelt standaard op het toestel zelf; kies bovenin de miniplayer of op het afspeelscherm een andere
+speler (Cast, andere apparaten) om daarheen te spelen. Beheer (gebruikers, Spotify koppelen, mappen,
+instellingen) blijft in de webinterface.
 
-Installeren op een Android-toestel met USB-debugging:
+Bij de eerste start vraagt de app het serveradres en laat hij inloggen met gebruikersnaam en wachtwoord of,
+als de server dat heeft, met OIDC via de browser van het toestel. Het afspelen loopt native, met
+mediabediening op het vergrendelscherm en via Bluetooth. Uitloggen kan onderaan de spelerkiezer.
+
+De Android TV-app is een eigen Kotlin-app met Compose for TV (bediening met de afstandsbediening): Home,
+Zoeken, Wachtrij, een spelerbalk en een afspeelscherm, en hij speelt standaard op de tv zelf. Inloggen kan
+op de tv alleen met gebruikersnaam en wachtwoord. Bouwen met Android Studio, of op de opdrachtregel:
+
+```bash
+cd src/Augora.Tv
+./gradlew assembleDebug
+```
+
+Gebruik daarvoor een JDK 17 of 21 als `JAVA_HOME` (niet 25) en een Android SDK met platform 36.
+
+Installeren van de telefoon-app op een Android-toestel met USB-debugging:
 
 ```bash
 dotnet build src/Augora.Mobile -f net10.0-android -t:Install -c Release
-dotnet build src/Augora.AndroidTv -t:Install -c Release
 ```
 
 De iOS-app bouwen kan alleen op een Mac (of vanuit Visual Studio, gekoppeld aan een Mac) met Xcode en de

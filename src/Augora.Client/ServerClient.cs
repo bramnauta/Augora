@@ -16,13 +16,48 @@ public sealed class ServerClient(AppSettings settings) : IDisposable
 
     public bool HasTokens => !string.IsNullOrEmpty(settings.RefreshToken);
 
-    /// <summary>Checks that an Augora server answers at <paramref name="serverUrl"/>.</summary>
-    public static async Task CheckServerAsync(string serverUrl, CancellationToken cancellationToken)
+    /// <summary>Checks that an Augora server answers at <paramref name="serverUrl"/>, and says how it wants users to log in.</summary>
+    public static async Task<AuthStatusDto> CheckServerAsync(string serverUrl, CancellationToken cancellationToken)
     {
         using var response = await Http.GetAsync($"{serverUrl}/api/auth/status", cancellationToken);
         response.EnsureSuccessStatusCode();
-        await response.Content.ReadFromJsonAsync<AuthStatusDto>(JsonSerializerOptions.Web, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<AuthStatusDto>(JsonSerializerOptions.Web, cancellationToken)
+            ?? throw new HttpRequestException("The server did not answer like an Augora server.");
     }
+
+    /// <summary>Logs in with a password; <c>false</c> when the user name or password is wrong.</summary>
+    public async Task<bool> LoginAsync(string userName, string password, CancellationToken cancellationToken)
+    {
+        using var response = await Http.PostAsJsonAsync($"{settings.ServerUrl}/api/auth/login", new LoginRequest(userName, password, UseCookies: false), JsonSerializerOptions.Web, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            return false;
+        }
+
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            throw new ApiException("Too many failed attempts, try again later.", ErrorCodes.LockedOut, (int)response.StatusCode);
+        }
+
+        response.EnsureSuccessStatusCode();
+        Save(await response.Content.ReadFromJsonAsync<AccessTokenResponse>(JsonSerializerOptions.Web, cancellationToken));
+        return true;
+    }
+
+    /// <summary>Exchanges the one-time code that an OIDC login in the system browser ended with for tokens.</summary>
+    public async Task<bool> ExchangeAppCodeAsync(string code, CancellationToken cancellationToken)
+    {
+        using var response = await Http.PostAsJsonAsync($"{settings.ServerUrl}/api/auth/app/token", new AppTokenRequest(code), JsonSerializerOptions.Web, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return false;
+        }
+
+        Save(await response.Content.ReadFromJsonAsync<AccessTokenResponse>(JsonSerializerOptions.Web, cancellationToken));
+        return true;
+    }
+
+    public void Logout() => settings.ClearTokens();
 
     /// <summary>Turns what the user typed into a server address: scheme added, trailing slash removed.</summary>
     public static string NormalizeServerUrl(string? input)

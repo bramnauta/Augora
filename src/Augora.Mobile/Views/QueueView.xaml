@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:v="clr-namespace:Augora.Mobile.Views"
+             xmlns:vm="clr-namespace:Augora.Mobile.ViewModels"
+             x:Class="Augora.Mobile.Views.QueueView"
+             x:DataType="vm:QueueViewModel">
+    <Grid RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="*,Auto" Padding="24,16,16,8">
+            <Label x:Name="TitleLabel" Style="{StaticResource Title}" />
+            <Button x:Name="ClearButton" Grid.Column="1" Style="{StaticResource Quiet}" Clicked="OnClear" />
+        </Grid>
+
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Rows}">
+            <CollectionView.EmptyView>
+                <Label x:Name="EmptyLabel" Style="{StaticResource Secondary}" HorizontalTextAlignment="Center" Margin="32" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:QueueRow">
+                    <Grid ColumnDefinitions="48,*,44" ColumnSpacing="12" Padding="16,6" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnPlay" />
+                        </Grid.GestureRecognizers>
+                        <Border WidthRequest="48" HeightRequest="48" BackgroundColor="{StaticResource Surface}" StrokeThickness="0"
+                                StrokeShape="RoundRectangle 6">
+                            <Grid>
+                                <v:Icon Kind="Note" Fill="{StaticResource TextSecondary}" WidthRequest="20" HeightRequest="20" />
+                                <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
+                            </Grid>
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                            <Label Text="{Binding Name}" TextColor="{Binding TitleColor}" LineBreakMode="TailTruncation" FontSize="16" />
+                            <Label Text="{Binding Subtitle}" Style="{StaticResource Secondary}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Grid Grid.Column="2" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnRemove" />
+                            </Grid.GestureRecognizers>
+                            <v:Icon Kind="Close" Fill="{StaticResource TextSecondary}" WidthRequest="18" HeightRequest="18" />
+                        </Grid>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentView>

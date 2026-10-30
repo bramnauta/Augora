@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Augora.Mobile.Views.LoginPage"
+             BackgroundColor="{StaticResource Background}"
+             SafeAreaEdges="All">
+    <ScrollView>
+        <VerticalStackLayout Padding="32" Spacing="14" VerticalOptions="Center" MaximumWidthRequest="480">
+            <Label x:Name="TitleLabel" Style="{StaticResource Title}" HorizontalTextAlignment="Center" Margin="0,0,0,12" />
+
+            <Border BackgroundColor="{StaticResource SurfaceRaised}" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="14,0">
+                <Entry x:Name="ServerEntry" Keyboard="Url" ReturnType="Go" Completed="OnConnect" />
+            </Border>
+
+            <VerticalStackLayout x:Name="CredentialsPanel" IsVisible="False" Spacing="14">
+                <Border BackgroundColor="{StaticResource SurfaceRaised}" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="14,0">
+                    <Entry x:Name="UserEntry" ReturnType="Next" />
+                </Border>
+                <Border BackgroundColor="{StaticResource SurfaceRaised}" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="14,0">
+                    <Entry x:Name="PasswordEntry" IsPassword="True" ReturnType="Go" Completed="OnLogin" />
+                </Border>
+                <Button x:Name="LoginButton" Clicked="OnLogin" />
+                <VerticalStackLayout x:Name="ProvidersPanel" Spacing="10" />
+            </VerticalStackLayout>
+
+            <Button x:Name="ConnectButton" Clicked="OnConnect" />
+            <Button x:Name="OtherServerButton" Style="{StaticResource Quiet}" Clicked="OnOtherServer" IsVisible="False" />
+            <ActivityIndicator x:Name="Busy" Color="{StaticResource Accent}" />
+            <Label x:Name="StatusLabel" TextColor="{StaticResource Danger}" HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

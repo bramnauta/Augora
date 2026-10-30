@@ -40,7 +40,7 @@ src/
   Augora.Web                Blazor WebAssembly UI
   Augora.Client             Gedeeld deel van de apps: serverclient, tokens, speler-protocol (PlayerController)
   Augora.AndroidPlayer      Native Android-speler (foreground service, MediaPlayer, MediaSession), gedeeld door Mobile en AndroidTv
-  Augora.Mobile             .NET MAUI-app voor telefoon en tablet (Android + iOS): WebView-UI + native speler
+  Augora.Mobile             .NET MAUI-app voor telefoon en tablet (Android + iOS): native luister-UI + native speler
   Augora.AndroidTv          Android TV-app (WebView-UI + native speler)
 integrations/
   homeassistant/custom_components/augora   Home Assistant-integratie (Python)
@@ -230,15 +230,31 @@ Spelers die zelf audio afspelen gebruiken één generiek protocol over de hub
 
 ## Apps (Android, Android TV, iOS)
 
-Twee apps: `Augora.Mobile` (.NET MAUI, telefoon en tablet, Android 8+ en iOS 15+) en `Augora.AndroidTv`
-(.NET for Android, Android TV via de leanback-launcher). Android TV heeft een eigen app omdat MAUI daar
-niet op mikt en de bediening met een afstandsbediening een andere UI vraagt.
+Twee apps: `Augora.Mobile` (.NET MAUI, telefoon en tablet, Android 8+ en iOS 15+) en `Augora.Tv` (Kotlin,
+Jetpack Compose for TV, Android TV). Android TV heeft een eigen app omdat MAUI daar niet op mikt en de
+bediening met een afstandsbediening een andere UI vraagt. Compose is Kotlin-only, dus de TV-app heeft een
+eigen, kleine client (zelfde API en speler-protocol) in plaats van `Augora.Client`.
 
-- Beide tonen de web-UI in een WebView (user agent `AugoraAndroid/1.0` of `AugoraIos/1.0`; de UI verbergt
-  dan de browser-speler). Inloggen gebeurt in de WebView, dus OIDC werkt zonder extra code.
-- Zodra de WebView een `Augora.Auth`-cookie heeft, wisselt de app die via `POST /api/auth/token`
-  in voor een access- en refresh-token (alleen met de cookie toegestaan, niet met een bearer-token).
-- `Augora.Client` bevat wat niet platformspecifiek is: `ServerClient` (tokens), `AppSettings` en
+- `Augora.Mobile` is een native luisterapp (geen WebView): Home (bladeren door de bronnen), Zoeken en
+  Wachtrij, een miniplayer, een afspeelscherm en een spelerkiezer. Beheer blijft in de webinterface.
+  De app gebruikt `ApiClient` (gedeeld met de web-UI, nu in `Augora.Client`) met een bearer-token, en
+  `LiveStore` voor de live toestand via de events-hub.
+- De app start op zijn eigen speler (`remote:{deviceId}`): afspelen gebeurt standaard op het toestel zelf.
+  Een andere speler kiezen geldt tot de app opnieuw start.
+- Inloggen: gebruikersnaam en wachtwoord via `POST /api/auth/login` met `useCookies: false`. OIDC loopt
+  via de systeembrowser: de app opent `/api/auth/external/{scheme}?returnUrl=/api/auth/app/complete`; na
+  het inloggen redirect de server naar `augora://auth?code=...` (eenmalig, 1 minuut geldig) en de app
+  wisselt die code via `POST /api/auth/app/token` in voor een access- en refresh-token.
+- `Augora.Tv` (`src/Augora.Tv`, Gradle): Home, Zoeken, Wachtrij, spelerbalk, afspeelscherm en spelerkiezer
+  met Compose for TV (`androidx.tv:tv-material`); plaatjes met Coil. `data/` is de client: `Api` (OkHttp,
+  bearer-token), `Live` (events-hub via de SignalR Java-client) en `Session` (adres, device-id, tokens).
+  `player/` is de speler: `PlayerService` (foreground service, Media3 `MediaSession`) en
+  `PlayerController`, een port van de C#-controller (zelfde remote-player-protocol, soort `Tv`) met ExoPlayer.
+  De toetsen van de afstandsbediening lopen via de server, zoals in de andere apps. De tv start op zijn
+  eigen speler. Inloggen kan alleen met gebruikersnaam en wachtwoord; inloggen met OIDC op de tv (een code die
+  je op de telefoon goedkeurt) is er nog niet.
+- `Augora.Client` bevat wat niet platformspecifiek is: `ServerClient` (tokens), `AppSettings`,
+  `ApiClient`, `LiveStore` en
   `PlayerController`. Die gebruikt hetzelfde remote-player-protocol als de browser: `RegisterPlayer` met
   een vaste device-id en soort `Phone` of `Tv`, commando's uitvoeren, state elke 5 s rapporteren. Het
   platform levert alleen een `IPlayerBackend`: laden, afspelen, pauzeren, zoeken, volume en de

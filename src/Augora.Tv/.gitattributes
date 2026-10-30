@@ -1,0 +1,4 @@
+# The Gradle launch scripts must keep their line endings, whatever the checkout does.
+gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary

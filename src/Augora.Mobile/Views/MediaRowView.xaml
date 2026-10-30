@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:v="clr-namespace:Augora.Mobile.Views"
+             xmlns:vm="clr-namespace:Augora.Mobile.ViewModels"
+             x:Class="Augora.Mobile.Views.MediaRowView"
+             x:DataType="vm:MediaRow">
+    <Grid ColumnDefinitions="56,*,Auto,44,44" ColumnSpacing="12" Padding="16,6" BackgroundColor="Transparent">
+        <Grid.GestureRecognizers>
+            <TapGestureRecognizer Tapped="OnOpen" />
+        </Grid.GestureRecognizers>
+
+        <Border WidthRequest="56" HeightRequest="56" BackgroundColor="{StaticResource Surface}" StrokeThickness="0"
+                StrokeShape="RoundRectangle 6">
+            <Grid>
+                <v:Icon Kind="Note" Fill="{StaticResource TextSecondary}" WidthRequest="22" HeightRequest="22" />
+                <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
+            </Grid>
+        </Border>
+
+        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+            <Label Text="{Binding Name}" LineBreakMode="TailTruncation" FontSize="16" />
+            <Label Text="{Binding Subtitle}" Style="{StaticResource Secondary}" LineBreakMode="TailTruncation" />
+        </VerticalStackLayout>
+
+        <Label Grid.Column="2" Text="{Binding DurationText}" Style="{StaticResource Secondary}" VerticalOptions="Center" />
+        <v:Icon Grid.Column="2" Kind="Chevron" IsVisible="{Binding ShowChevron}" Fill="{StaticResource TextSecondary}" />
+
+        <Grid Grid.Column="3" IsVisible="{Binding ShowPlayButton}" BackgroundColor="Transparent">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnPlay" />
+            </Grid.GestureRecognizers>
+            <v:Icon Kind="Play" Fill="{StaticResource Accent}" />
+        </Grid>
+
+        <Grid Grid.Column="4" BackgroundColor="Transparent">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnMore" />
+            </Grid.GestureRecognizers>
+            <v:Icon Kind="More" Fill="{StaticResource TextSecondary}" />
+        </Grid>
+    </Grid>
+</ContentView>

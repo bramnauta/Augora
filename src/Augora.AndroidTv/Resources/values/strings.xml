@@ -1,8 +1,0 @@
-<resources>
-    <string name="app_name">Augora</string>
-    <string name="setup_title">Verbinden met Augora</string>
-    <string name="setup_hint">Adres van de server, bijv. http://192.168.1.10:4727</string>
-    <string name="setup_connect">Verbinden</string>
-    <string name="setup_failed">Kan de server niet bereiken: %1$s</string>
-    <string name="page_failed">De server is niet bereikbaar. Controleer het adres.</string>
-</resources>

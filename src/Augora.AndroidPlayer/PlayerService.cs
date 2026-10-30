@@ -30,6 +30,8 @@ public sealed class PlayerService : Service
 
     public static void Start(Context context) => context.StartForegroundService(new Intent(context, typeof(PlayerService)));
 
+    public static void Stop(Context context) => context.StopService(new Intent(context, typeof(PlayerService)));
+
     public override IBinder? OnBind(Intent? intent) => null;
 
     public override void OnCreate()

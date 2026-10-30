@@ -122,6 +122,7 @@ internal static class AuthSetup
         }
 
         services.AddScoped<ApiTokenService>();
+        services.AddSingleton<AppLoginCodes>();
 
         services.AddAuthorizationBuilder()
             .SetFallbackPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())

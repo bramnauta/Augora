@@ -124,7 +124,11 @@ pas weer als speler beschikbaar zodra je de app opent.
 
 De interface staat ook in de zijbalk van Home Assistant (ingress). Zet dat aan of uit met de schakelaar
 **Toon in zijbalk** op de pagina van de app. Inloggen via OIDC werkt alleen op het directe adres, niet
-via de zijbalk; wachtwoord-login werkt op beide.
+via de zijbalk; wachtwoord-login werkt op beide. Spotify koppelen vraagt een eigen https-adres dat
+Augora (poort 4727) bereikt, bijvoorbeeld via je reverse proxy: zet dat in de app-optie
+`public_base_url` en registreer `<dat adres>/api/spotify/callback` in je Spotify-app. Het
+ingress-adres van Home Assistant werkt niet als callback, omdat Spotify daar zonder HA-sessie
+terugkomt.
 
 De app draait met `host_network` (mDNS voor Spotify Connect en Cast, geen macvlan nodig). De HA-mappen
 `/media` en `/share` zijn als muziekmappen gekoppeld; Spotify-client-id, TuneIn-gebruikersnaam en de

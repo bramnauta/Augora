@@ -63,6 +63,16 @@ internal static class SpotifyEndpoints
                 return AuthEndpoints.Problem(ErrorCodes.Forbidden, "Only administrators can link shared accounts.", StatusCodes.Status403Forbidden);
             }
 
+            if (Ingress.PathBase(context.Request) is not null && string.IsNullOrWhiteSpace(options.Value.PublicBaseUrl))
+            {
+                // Spotify sends the browser back to the callback without the Home Assistant session, which ingress refuses.
+                return AuthEndpoints.Problem(
+                    ErrorCodes.InvalidRequest,
+                    "Spotify cannot return to the Home Assistant sidebar. Set the app option public_base_url to an https address "
+                    + "that reaches Augora (port 4727) and register its callback in your Spotify app.",
+                    StatusCodes.Status400BadRequest);
+            }
+
             var redirectUri = RedirectUri(context, options.Value);
             var url = accounts.CreateAuthorizeUrl(request.Shared ? null : users.GetUserId(principal), request.ClientId, redirectUri, "/spotify");
             return TypedResults.Ok(new LinkSpotifyAccountResponse(url, redirectUri.ToString()));

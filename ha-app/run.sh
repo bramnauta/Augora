@@ -28,6 +28,12 @@ export Providers__LocalFiles__Folders__0__Path=/media
 export Providers__LocalFiles__Folders__1__Name=Share
 export Providers__LocalFiles__Folders__1__Path=/share
 
+# setpriv keeps the environment of root: without this the programs Augora starts (Soloist, PulseAudio) want to
+# write their caches in /root. /data survives restarts.
+export HOME=/data/home
+export XDG_CACHE_HOME=/data/home/.cache
+mkdir -p "$HOME"
+
 # /data is owned by root in the app; Augora runs as the unprivileged app user.
 chown -R app:app /data
 

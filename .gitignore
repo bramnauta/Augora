@@ -481,6 +481,6 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# AudioCentral runtime data (SQLite database)
-**/audiocentral.db*
+# Augora runtime data (SQLite database)
+**/augora.db*
 **/App_Data/

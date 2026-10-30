@@ -1,0 +1,277 @@
+@page "/spotify"
+@inject ApiClient Api
+@inject NavigationManager Navigation
+@inject NotificationService Notifications
+@inject DialogService Dialogs
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@L["Nav_Spotify"] · Augora</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">@L["SpotifyAccounts"]</RadzenText>
+
+@if (_status is null)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else if (!_status.Enabled)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" AllowClose="false" Shade="Shade.Lighter">@L["SpotifyDisabled"]</RadzenAlert>
+}
+else
+{
+    @if (_isAdmin)
+    {
+        <RadzenCard Variant="Variant.Filled" Style="max-width: 50rem;" class="rz-mb-4">
+            <RadzenText TextStyle="TextStyle.H6">@L["SpotifyDefaultClientId"]</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">@L["SpotifyDefaultClientIdHelp"]</RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap" Gap="0.5rem" class="rz-mt-2">
+                <RadzenFormField Text="@L["SpotifyDefaultClientId"]" Style="width: 24rem; max-width: 100%;">
+                    <RadzenTextBox @bind-Value="_defaultClientId" />
+                </RadzenFormField>
+                <RadzenButton Icon="save" Text="@L["Save"]" Click="SaveDefaultClientIdAsync" />
+                @if (_status.DefaultClientIdFromSettings)
+                {
+                    <RadzenButton Icon="undo" Text="@L["ResetToDefault"]" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" Click="ResetDefaultClientIdAsync" />
+                }
+            </RadzenStack>
+            @if (!_status.DefaultClientIdFromSettings && _status.HasDefaultClientId)
+            {
+                <RadzenText TextStyle="TextStyle.Caption">@L["SpotifyDefaultClientIdFromConfig"]</RadzenText>
+            }
+        </RadzenCard>
+    }
+
+    <RadzenCard Variant="Variant.Filled" Style="max-width: 50rem;">
+        <RadzenText TextStyle="TextStyle.Body2">@L["SpotifyHelp"]</RadzenText>
+
+        @if (_status.Accounts.Count == 0)
+        {
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-my-4"><em>@L["SpotifyNoAccounts"]</em></RadzenText>
+        }
+        else
+        {
+            <RadzenStack Gap="0.5rem" class="rz-my-4">
+                @foreach (var account in _status.Accounts)
+                {
+                    <RadzenStack @key="account.Id" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                        <RadzenIcon Icon="account_circle" />
+                        <RadzenStack Gap="0" Style="flex: 1;" class="ellipsis">
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0">@account.DisplayName</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">
+                                @(account.OwnerUserId is null ? L["SpotifySharedLabel"] : L["SpotifyOwner", account.OwnerName ?? "?"])
+                                <span> · @(account.Engine == SpotifyEngine.Soloist ? "Spotify Soloist" : "go-librespot")</span>
+                                @if (account.PlayerName is not null)
+                                {
+                                    <span> · @L["SpotifyStreamingOn", account.PlayerName]</span>
+                                }
+                            </RadzenText>
+                            @if (account.Error is not null)
+                            {
+                                <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-danger">@account.Error</RadzenText>
+                            }
+                        </RadzenStack>
+                        <RadzenButton Icon="speaker" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["SpotifyPairButton"]"
+                                      IsBusy="@(_pairing == account.Id)" Click="@(() => PairAsync(account))" />
+                        @if (_isAdmin || account.OwnerUserId == _userId)
+                        {
+                            <RadzenSplitButton Icon="tune" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["SpotifyEngine"]"
+                                               Click="@(item => ChangeEngineAsync(account, item?.Value as string))">
+                                <ChildContent>
+                                    <RadzenSplitButtonItem Text="go-librespot" Value="@nameof(SpotifyEngine.Librespot)" />
+                                    <RadzenSplitButtonItem Text="Spotify Soloist" Value="@nameof(SpotifyEngine.Soloist)" />
+                                </ChildContent>
+                            </RadzenSplitButton>
+                            <RadzenButton Icon="link_off" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["Remove"]" Click="@(() => RemoveAsync(account))" />
+                        }
+                    </RadzenStack>
+                }
+            </RadzenStack>
+        }
+
+        @if (!_status.HasDefaultClientId)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" AllowClose="false" Shade="Shade.Lighter">@L["SpotifyNoClientId"]</RadzenAlert>
+        }
+
+        <RadzenStack Gap="0.75rem">
+            <RadzenFormField Text="@L["SpotifyClientId"]" Style="max-width: 24rem;">
+                <RadzenTextBox @bind-Value="_clientId" />
+            </RadzenFormField>
+            @if (_isAdmin)
+            {
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenSwitch @bind-Value="_shared" />
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">@L["SpotifyShared"]</RadzenText>
+                </RadzenStack>
+            }
+            <div>
+                <RadzenButton Icon="link" Text="@L["SpotifyLink"]" Click="LinkAsync"
+                              Disabled="@(!_status.HasDefaultClientId && string.IsNullOrWhiteSpace(_clientId))" />
+            </div>
+            <RadzenText TextStyle="TextStyle.Caption">
+                @L["SpotifyRedirectHelp"] <code>@_status.RedirectUri</code>
+            </RadzenText>
+        </RadzenStack>
+    </RadzenCard>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? Linked { get; set; }
+
+    private SpotifyStatusDto? _status;
+    private string? _clientId;
+    private bool _shared;
+    private bool _isAdmin;
+    private string? _userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var user = (await AuthState).User;
+            _isAdmin = user.IsInRole(Roles.Admin);
+            _userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        if (Error is not null)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], Error, duration: 10000);
+        }
+        else if (Linked == 1)
+        {
+            Notifications.Notify(NotificationSeverity.Success, L["SpotifyLinked"]);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _status = await Api.GetSpotifyAsync();
+            _defaultClientId = _status.DefaultClientId;
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+
+    private string? _defaultClientId;
+
+    private Task SaveDefaultClientIdAsync() => SetDefaultClientIdAsync(_defaultClientId);
+
+    private Task ResetDefaultClientIdAsync() => SetDefaultClientIdAsync(null);
+
+    private async Task SetDefaultClientIdAsync(string? clientId)
+    {
+        try
+        {
+            await Api.SetSpotifyClientIdAsync(clientId);
+            await LoadAsync();
+            Notifications.Notify(NotificationSeverity.Success, L["Saved"], duration: 2500);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+
+    private async Task LinkAsync()
+    {
+        try
+        {
+            var response = await Api.LinkSpotifyAccountAsync(new LinkSpotifyAccountRequest(_shared, _clientId));
+            Navigation.NavigateTo(response.AuthorizeUrl, forceLoad: true);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+
+    private string? _pairing;
+
+    private async Task ChangeEngineAsync(SpotifyAccountDto account, string? engine)
+    {
+        // The main part of the split button only opens its menu.
+        if (!Enum.TryParse<SpotifyEngine>(engine, out var choice))
+        {
+            return;
+        }
+
+        try
+        {
+            if (choice == SpotifyEngine.Soloist)
+            {
+                if (await Dialogs.OpenAsync<SpotifyEngineDialog>("Spotify Soloist",
+                        new Dictionary<string, object?> { [nameof(SpotifyEngineDialog.Account)] = account }) is not true)
+                {
+                    return;
+                }
+            }
+            else
+            {
+                await Api.SetSpotifyEngineAsync(account.Id, new SetSpotifyEngineRequest(SpotifyEngine.Librespot));
+            }
+
+            await LoadAsync();
+            Notifications.Notify(NotificationSeverity.Success, L["Saved"], account.DisplayName, duration: 2500);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message, duration: 10000);
+        }
+    }
+
+    /// <summary>Approves the account for playback (once), or confirms that it already is.</summary>
+    private async Task PairAsync(SpotifyAccountDto account)
+    {
+        _pairing = account.Id;
+        try
+        {
+            var pairing = await Api.GetSpotifyPairingAsync(account.Id);
+            if (!pairing.Paired && await Dialogs.OpenAsync<SpotifyPairingDialog>(L["SpotifyPairTitle"],
+                    new Dictionary<string, object?> { [nameof(SpotifyPairingDialog.Pairing)] = pairing }) is not true)
+            {
+                return;
+            }
+
+            Notifications.Notify(NotificationSeverity.Success, L["SpotifyPaired"], account.DisplayName);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message, duration: 10000);
+        }
+        finally
+        {
+            _pairing = null;
+        }
+    }
+
+    private async Task RemoveAsync(SpotifyAccountDto account)
+    {
+        if (await Dialogs.Confirm(L["ConfirmRemoveSpotify", account.DisplayName], L["Remove"]) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.RemoveSpotifyAccountAsync(account.Id);
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+}

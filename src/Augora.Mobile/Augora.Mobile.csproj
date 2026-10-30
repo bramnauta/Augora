@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The phone and tablet app: the web UI in a WebView plus a native player, on Android and iOS.
+       Android TV has its own app (Augora.AndroidTv). iOS can only be built on a Mac (or paired to one from Visual Studio). -->
+  <PropertyGroup>
+    <!-- Directory.Build.props sets TargetFramework, which would turn this into a single-target project. -->
+    <TargetFramework />
+    <TargetFrameworks>net10.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx')) Or '$(BuildIos)' == 'true'">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <RootNamespace>Augora.Mobile</RootNamespace>
+
+    <ApplicationTitle>Augora</ApplicationTitle>
+    <ApplicationId>com.nauralta.augora</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <!-- Android 8.0: notification channels and audio focus requests. -->
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">26.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">15.0</SupportedOSPlatformVersion>
+
+    <!-- SignalR and the contracts are (de)serialised with reflection; trim only the framework. -->
+    <TrimMode>partial</TrimMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#2C3E50" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" />
+    <ProjectReference Include="..\Augora.Client\Augora.Client.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <ProjectReference Include="..\Augora.AndroidPlayer\Augora.AndroidPlayer.csproj" />
+  </ItemGroup>
+
+</Project>

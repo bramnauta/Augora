@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <UserSecretsId>augora-server</UserSecretsId>
+    <ContainerRepository>augora</ContainerRepository>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Augora.ServiceDefaults\Augora.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Augora.Core\Augora.Core.csproj" />
+    <ProjectReference Include="..\Augora.Providers.TuneIn\Augora.Providers.TuneIn.csproj" />
+    <ProjectReference Include="..\Augora.Players.GoogleCast\Augora.Players.GoogleCast.csproj" />
+    <ProjectReference Include="..\Augora.Players.Remote\Augora.Players.Remote.csproj" />
+    <ProjectReference Include="..\Augora.Web\Augora.Web.csproj" />
+    <ProjectReference Include="..\Augora.Providers.Spotify\Augora.Providers.Spotify.csproj" />
+    <ProjectReference Include="..\Augora.Providers.LocalFiles\Augora.Providers.LocalFiles.csproj" />
+    <ProjectReference Include="..\Augora.Providers.Podcasts\Augora.Providers.Podcasts.csproj" />
+    <ProjectReference Include="..\Augora.Players.Groups\Augora.Players.Groups.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <PackageReference Include="Scalar.AspNetCore" />
+  </ItemGroup>
+
+</Project>

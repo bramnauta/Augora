@@ -1,0 +1,286 @@
+@page "/settings"
+@attribute [Authorize(Roles = Roles.Admin)]
+@inject ApiClient Api
+@inject NotificationService Notifications
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@L["Nav_Settings"] · Augora</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">@L["Nav_Settings"]</RadzenText>
+
+<RadzenCard Variant="Variant.Filled" Style="max-width: 50rem;" class="rz-mb-6">
+    <RadzenText TextStyle="TextStyle.H6">@L["LocalLibrary"]</RadzenText>
+    @if (_local is null)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else if (!_local.Enabled)
+    {
+        <RadzenText TextStyle="TextStyle.Body2">@L["LocalLibraryDisabled"]</RadzenText>
+    }
+    else
+    {
+        <RadzenText TextStyle="TextStyle.Body2">@L["LocalFoldersHelp"]</RadzenText>
+        @if (!_local.FoldersFromSettings && _folders.Count > 0)
+        {
+            <RadzenText TextStyle="TextStyle.Caption">@L["LocalFoldersFromConfig"]</RadzenText>
+        }
+
+        @if (_folders.Count == 0)
+        {
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-my-4"><em>@L["LocalFoldersNone"]</em></RadzenText>
+        }
+        else
+        {
+            <RadzenStack Gap="0.25rem" class="rz-my-4">
+                @foreach (var folder in _folders)
+                {
+                    <RadzenStack @key="folder.Name" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                        <RadzenIcon Icon="folder" />
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0">@folder.Name</RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0" Style="flex: 1;"><code>@folder.Path</code></RadzenText>
+                        <RadzenButton Icon="delete" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["Remove"]" Click="@(() => RemoveFolderAsync(folder))" />
+                    </RadzenStack>
+                }
+            </RadzenStack>
+        }
+
+        <RadzenTemplateForm TItem="LocalFolderDraft" Data="@_newFolder" Submit="AddFolderAsync">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+                <RadzenFormField Text="@L["Name"]">
+                    <RadzenTextBox Name="FolderName" @bind-Value="_newFolder.Name" />
+                </RadzenFormField>
+                <RadzenFormField Text="@L["Path"]" Style="min-width: 18rem;">
+                    <RadzenTextBox Name="FolderPath" @bind-Value="_newFolder.Path" />
+                </RadzenFormField>
+                <RadzenButton ButtonType="ButtonType.Submit" Icon="add" Text="@L["Add"]"
+                              Disabled="@(string.IsNullOrWhiteSpace(_newFolder.Name) || string.IsNullOrWhiteSpace(_newFolder.Path))" />
+            </RadzenStack>
+        </RadzenTemplateForm>
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Wrap="FlexWrap.Wrap" Gap="0.5rem" class="rz-mt-4">
+            <RadzenFormField Text="@L["RescanInterval"]" Style="width: 14rem;">
+                <RadzenNumeric TValue="int" @bind-Value="_rescanMinutes" Min="5" Max="10080" ShowUpDown="false" />
+            </RadzenFormField>
+            <RadzenButton Icon="save" Text="@L["Save"]" Click="@(() => SaveRescanAsync(_rescanMinutes))" />
+            @if (_local.RescanFromSettings)
+            {
+                <RadzenButton Icon="undo" Text="@L["ResetToDefault"]" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" Click="@(() => SaveRescanAsync(null))" />
+            }
+        </RadzenStack>
+
+        <RadzenText TextStyle="TextStyle.Body2" class="rz-mt-4">@L["LocalLibraryStatus", _local.TrackCount]</RadzenText>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+            <RadzenButton Icon="refresh" Text="@L["Rescan"]" Variant="Variant.Outlined" Click="RescanAsync" />
+            @if (_local.FoldersFromSettings)
+            {
+                <RadzenButton Icon="undo" Text="@L["ResetToDefault"]" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" Click="ResetFoldersAsync" />
+            }
+        </RadzenStack>
+    }
+</RadzenCard>
+
+<RadzenCard Variant="Variant.Filled" Style="max-width: 50rem;" class="rz-mb-6">
+    <RadzenText TextStyle="TextStyle.H6">TuneIn</RadzenText>
+    @if (_tuneIn is null)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else if (!_tuneIn.Enabled)
+    {
+        <RadzenText TextStyle="TextStyle.Body2">@L["TuneInDisabled"]</RadzenText>
+    }
+    else
+    {
+        <RadzenText TextStyle="TextStyle.Body2">@L["TuneInHelp"]</RadzenText>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap" Gap="0.5rem" class="rz-mt-2">
+            <RadzenFormField Text="@L["TuneInUsername"]" Style="width: 18rem; max-width: 100%;">
+                <RadzenTextBox @bind-Value="_tuneInUsername" />
+            </RadzenFormField>
+            <RadzenButton Icon="save" Text="@L["Save"]" Click="@(() => SaveTuneInAsync(_tuneInUsername))" />
+            @if (_tuneIn.UsernameFromSettings)
+            {
+                <RadzenButton Icon="undo" Text="@L["ResetToDefault"]" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" Click="@(() => SaveTuneInAsync(null))" />
+            }
+        </RadzenStack>
+        @if (!_tuneIn.UsernameFromSettings && _tuneIn.Username is not null)
+        {
+            <RadzenText TextStyle="TextStyle.Caption">@L["TuneInFromConfig"]</RadzenText>
+        }
+    }
+</RadzenCard>
+
+<RadzenCard Variant="Variant.Filled" Style="max-width: 50rem;">
+    <RadzenText TextStyle="TextStyle.H6">@L["ManualDevices"]</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body2">@L["ManualDevicesHelp"]</RadzenText>
+
+    @if (_devices.Count == 0)
+    {
+        <RadzenText TextStyle="TextStyle.Body2" class="rz-my-4"><em>@L["NoManualDevices"]</em></RadzenText>
+    }
+    else
+    {
+        <RadzenStack Gap="0.25rem" class="rz-my-4">
+            @foreach (var device in _devices)
+            {
+                <RadzenStack @key="device.Id" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                    <RadzenIcon Icon="speaker" />
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0" Style="flex: 1;">@device.Name</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">@device.Host:@device.Port</RadzenText>
+                    <RadzenButton Icon="delete" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["Remove"]" Click="@(() => RemoveAsync(device))" />
+                </RadzenStack>
+            }
+        </RadzenStack>
+    }
+
+    <RadzenTemplateForm TItem="NewDevice" Data="@_new" Submit="AddAsync">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+            <RadzenFormField Text="@L["Name"]">
+                <RadzenTextBox Name="Name" @bind-Value="_new.Name" />
+            </RadzenFormField>
+            <RadzenFormField Text="@L["Host"]">
+                <RadzenTextBox Name="Host" @bind-Value="_new.Host" />
+            </RadzenFormField>
+            <RadzenFormField Text="@L["Port"]" Style="width: 8rem;">
+                <RadzenNumeric Name="Port" TValue="int" @bind-Value="_new.Port" Min="1" Max="65535" ShowUpDown="false" />
+            </RadzenFormField>
+            <RadzenButton ButtonType="ButtonType.Submit" Icon="add" Text="@L["Add"]" Disabled="@(string.IsNullOrWhiteSpace(_new.Name) || string.IsNullOrWhiteSpace(_new.Host))" />
+        </RadzenStack>
+    </RadzenTemplateForm>
+</RadzenCard>
+
+@code {
+    private List<ManualCastDeviceDto> _devices = [];
+    private NewDevice _new = new();
+    private LocalLibraryStatusDto? _local;
+    private List<LocalFolderDto> _folders = [];
+    private LocalFolderDraft _newFolder = new();
+
+    private int _rescanMinutes;
+    private TuneInSettingsDto? _tuneIn;
+    private string? _tuneInUsername;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLocalAsync();
+        await LoadTuneInAsync();
+        _devices = await Api.GetManualCastDevicesAsync();
+    }
+
+    private async Task LoadLocalAsync()
+    {
+        _local = await Api.GetLocalLibraryAsync();
+        _folders = [.. _local.Folders];
+        _rescanMinutes = _local.RescanMinutes;
+    }
+
+    private async Task LoadTuneInAsync()
+    {
+        _tuneIn = await Api.GetTuneInAsync();
+        _tuneInUsername = _tuneIn.Username;
+    }
+
+    private Task SaveRescanAsync(int? minutes) => SaveAsync(async () =>
+    {
+        await Api.SetLocalRescanMinutesAsync(minutes);
+        await LoadLocalAsync();
+    });
+
+    private Task SaveTuneInAsync(string? username) => SaveAsync(async () =>
+    {
+        await Api.SetTuneInUsernameAsync(username);
+        await LoadTuneInAsync();
+    });
+
+    private async Task SaveAsync(Func<Task> save)
+    {
+        try
+        {
+            await save();
+            Notifications.Notify(NotificationSeverity.Success, L["Saved"], duration: 2500);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+
+    private Task AddFolderAsync(LocalFolderDraft draft) =>
+        SaveFoldersAsync([.. _folders, new LocalFolderDto(draft.Name.Trim(), draft.Path.Trim())], () => _newFolder = new LocalFolderDraft());
+
+    private Task RemoveFolderAsync(LocalFolderDto folder) =>
+        SaveFoldersAsync(_folders.Where(f => f != folder).ToList());
+
+    private Task ResetFoldersAsync() => SaveFoldersAsync(null);
+
+    private async Task SaveFoldersAsync(List<LocalFolderDto>? folders, Action? saved = null)
+    {
+        try
+        {
+            await Api.SetLocalFoldersAsync(folders);
+            saved?.Invoke();
+            await LoadLocalAsync();
+            Notifications.Notify(NotificationSeverity.Success, L["Saved"], duration: 2500);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+
+    private sealed class LocalFolderDraft
+    {
+        public string Name { get; set; } = "";
+
+        public string Path { get; set; } = "";
+    }
+
+    private async Task RescanAsync()
+    {
+        try
+        {
+            await Api.RescanLocalLibraryAsync();
+            Notifications.Notify(NotificationSeverity.Info, L["RescanStarted"]);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+
+    private async Task AddAsync(NewDevice device)
+    {
+        try
+        {
+            var added = await Api.AddManualCastDeviceAsync(new AddManualCastDeviceRequest(device.Name, device.Host, device.Port));
+            _devices = [.. _devices, added];
+            _new = new NewDevice();
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+
+    private async Task RemoveAsync(ManualCastDeviceDto device)
+    {
+        try
+        {
+            await Api.RemoveManualCastDeviceAsync(device.Id);
+            _devices = _devices.Where(d => d.Id != device.Id).ToList();
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+
+    private sealed class NewDevice
+    {
+        public string Name { get; set; } = "";
+
+        public string Host { get; set; } = "";
+
+        public int Port { get; set; } = 8009;
+    }
+}

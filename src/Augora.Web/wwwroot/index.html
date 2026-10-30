@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="nl">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Augora</title>
+    <base href="/" />
+    <link rel="icon" type="image/png" href="icon-192.png" />
+    <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-dark.css" />
+    <link rel="stylesheet" href="css/app.css" />
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        Er is een onverwachte fout opgetreden.
+        <a href="." class="reload">Herladen</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
+    <!-- Plain (not fingerprinted) path: when the server publishes this app, index.html is served as a
+         file and the #[.{fingerprint}] placeholders are not replaced. The boot manifest still loads
+         fingerprinted framework files. -->
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

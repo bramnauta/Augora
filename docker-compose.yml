@@ -5,27 +5,27 @@
 # values in a .env file next to this one (see .env.example).
 #
 # macvlan isolates the container from the host itself: a reverse proxy on the same host reaches
-# AudioCentral through the "proxy" bridge network below instead (attach your proxy container to it).
+# Augora through the "proxy" bridge network below instead (attach your proxy container to it).
 services:
-  audiocentral:
+  augora:
     build: .
-    image: audiocentral:latest
-    container_name: audiocentral
+    image: augora:latest
+    container_name: augora
     restart: unless-stopped
     networks:
       lan:
-        ipv4_address: ${AUDIOCENTRAL_IP}
+        ipv4_address: ${AUGORA_IP}
       proxy: {}
     volumes:
-      - audiocentral-data:/data
+      - augora-data:/data
       # Music library, e.g. a NAS share mounted on the host. Read-only is enough.
       - ${MUSIC_PATH:-/mnt/nas/music}:/music:ro
     environment:
       TZ: Europe/Amsterdam
       # With two networks the LAN address cannot be detected reliably: always the macvlan address.
-      AudioCentral__StreamBaseUrl: http://${AUDIOCENTRAL_IP}:4727
+      Augora__StreamBaseUrl: http://${AUGORA_IP}:4727
       # Public url when running behind a reverse proxy.
-      AudioCentral__PublicBaseUrl: ${PUBLIC_URL:-}
+      Augora__PublicBaseUrl: ${PUBLIC_URL:-}
       Providers__LocalFiles__Folders__0__Name: Muziek
       Providers__LocalFiles__Folders__0__Path: /music
       # Client id of your app on developer.spotify.com (accounts can also bring their own).
@@ -42,9 +42,9 @@ networks:
         - subnet: ${LAN_SUBNET}
           gateway: ${LAN_GATEWAY}
           # Keep this range out of your DHCP pool.
-          ip_range: ${LAN_IP_RANGE:-${AUDIOCENTRAL_IP}/32}
+          ip_range: ${LAN_IP_RANGE:-${AUGORA_IP}/32}
   proxy:
     driver: bridge
 
 volumes:
-  audiocentral-data:
+  augora-data:

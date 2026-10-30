@@ -1,0 +1,401 @@
+using System.Collections.Concurrent;
+using Augora.Contracts;
+using Augora.Core.Events;
+using Augora.Core.Media;
+using Augora.Core.Players;
+using Augora.Core.Providers;
+using Augora.Core.Streaming;
+using Microsoft.Extensions.Logging;
+
+namespace Augora.Core.Queue;
+
+/// <summary>
+/// Owns the queue of every player: resolves items to streams, tells players what to play and
+/// advances when an item finishes.
+/// </summary>
+public sealed class QueueManager
+{
+    private const int MaxFollowing = 500;
+
+    private readonly ConcurrentDictionary<string, PlayerQueue> _queues = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly PlayerManager _players;
+    private readonly LibraryService _library;
+    private readonly StreamResolver _resolver;
+    private readonly StreamSessionManager _sessions;
+    private readonly IStreamUrlProvider _urls;
+    private readonly IQueueStore _store;
+    private readonly IEventPublisher _events;
+    private readonly ILogger<QueueManager> _logger;
+    private readonly ICurrentUser _currentUser;
+    private readonly GroupMembership _membership;
+    private readonly ConcurrentDictionary<string, string> _lastUsers = new(StringComparer.OrdinalIgnoreCase);
+
+    public QueueManager(
+        PlayerManager players,
+        LibraryService library,
+        StreamResolver resolver,
+        StreamSessionManager sessions,
+        IStreamUrlProvider urls,
+        IQueueStore store,
+        IEventPublisher events,
+        ICurrentUser currentUser,
+        GroupMembership membership,
+        ILogger<QueueManager> logger)
+    {
+        _currentUser = currentUser;
+        _membership = membership;
+        _players = players;
+        _library = library;
+        _resolver = resolver;
+        _sessions = sessions;
+        _urls = urls;
+        _store = store;
+        _events = events;
+        _logger = logger;
+
+        _players.PlaybackEnded += OnPlaybackEnded;
+    }
+
+    public Task<QueueDto> GetQueueAsync(string playerId, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, (queue, _) => Task.FromResult(queue.ToDto()), persist: false, cancellationToken);
+
+    /// <param name="takeoverPlayerId">Player whose provider resource (Spotify account) may be taken when none is free.</param>
+    /// <param name="following">"Play from here": items queued after <paramref name="uri"/>; unknown or unplayable ones are skipped.</param>
+    public Task<QueueDto> PlayAsync(
+        string playerId,
+        string uri,
+        QueueOption option,
+        CancellationToken cancellationToken,
+        string? takeoverPlayerId = null,
+        IReadOnlyList<string>? following = null) =>
+        WithQueueAsync(playerId, async (queue, ct) =>
+        {
+            var player = _players.GetAvailable(playerId);
+            var item = await _library.GetItemAsync(MediaItemRef.Parse(uri), ct);
+            var items = (await _library.GetQueueItemsAsync(item, ct)).ToList();
+            if (items.Count == 0)
+            {
+                throw new AugoraException(ErrorCodes.ItemNotPlayable, $"'{item.Name}' cannot be played.");
+            }
+
+            foreach (var next in (following ?? []).Take(MaxFollowing))
+            {
+                if (!MediaItemRef.TryParse(next, out var reference))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var followingItem = await _library.GetItemAsync(reference, ct);
+                    if (followingItem.IsPlayable && !followingItem.IsBrowsable)
+                    {
+                        items.Add(followingItem);
+                    }
+                }
+                catch (AugoraException ex)
+                {
+                    _logger.LogDebug(ex, "Skipping {Uri} after {Item}", next, uri);
+                }
+            }
+
+            if (queue.Enqueue(items, option) is { } index)
+            {
+                await PlayIndexAsync(player, queue, index, ct, takeoverPlayerId);
+            }
+
+            return queue.ToDto();
+        }, persist: true, cancellationToken);
+
+    public Task<QueueDto> PlayItemAsync(string playerId, string queueItemId, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, async (queue, ct) =>
+        {
+            var index = queue.Items.ToList().FindIndex(i => i.Id == queueItemId);
+            if (index < 0)
+            {
+                throw new AugoraException(ErrorCodes.ItemNotFound, $"Queue item '{queueItemId}' does not exist.", 404);
+            }
+
+            await PlayIndexAsync(_players.GetAvailable(playerId), queue, index, ct);
+            return queue.ToDto();
+        }, persist: true, cancellationToken);
+
+    /// <summary>Resumes a paused player, or restarts the current queue item when the player is idle (e.g. stopped live radio).</summary>
+    public Task<QueueDto> ResumeAsync(string playerId, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, async (queue, ct) =>
+        {
+            var player = _players.GetAvailable(playerId);
+            if (player.Status.State == PlaybackState.Paused)
+            {
+                await player.ResumeAsync(ct);
+            }
+            else if (player.Status.State == PlaybackState.Idle && (queue.CurrentIndex ?? (queue.Items.Count > 0 ? 0 : null)) is { } index)
+            {
+                await PlayIndexAsync(player, queue, index, ct);
+            }
+
+            return queue.ToDto();
+        }, persist: false, cancellationToken);
+
+    /// <summary>
+    /// Seeks in the current item. Players seek seekable streams themselves; a produced stream without a known length
+    /// (flow mode) is started again at <paramref name="position"/>.
+    /// </summary>
+    public Task<QueueDto> SeekAsync(string playerId, TimeSpan position, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, async (queue, ct) =>
+        {
+            var player = _players.GetAvailable(playerId);
+            if (!player.Features.HasFlag(PlayerFeatures.Seek) || player.Status.NowPlaying is not { IsLive: false } nowPlaying)
+            {
+                throw new AugoraException(ErrorCodes.NotSeekable, $"'{player.Name}' cannot seek in what it plays.", 409);
+            }
+
+            if (position < TimeSpan.Zero)
+            {
+                position = TimeSpan.Zero;
+            }
+            else if (nowPlaying.Duration is { } duration && position > duration)
+            {
+                position = duration;
+            }
+
+            var stream = _sessions.GetForPlayer(player.Id)?.Stream;
+            if (stream is ProducedStreamSource { IsSeekable: false })
+            {
+                // Flow mode makes the next item current just before the audio gets there: seek in the item that is heard.
+                var index = queue.CurrentIndex is { } current
+                    ? Enumerable.Range(0, current + 1).Reverse().Where(i => queue.Items[i].Item.Ref.ToString() == nowPlaying.ItemUri).Cast<int?>().FirstOrDefault() ?? current
+                    : throw new AugoraException(ErrorCodes.NotSeekable, $"'{player.Name}' has no current queue item.", 409);
+
+                _logger.LogInformation("Seek on {Player}: restarting the stream at {Position}", player.Name, position);
+                await PlayIndexAsync(player, queue, index, ct, startPosition: position);
+            }
+            else
+            {
+                await player.SeekAsync(position, ct);
+            }
+
+            return queue.ToDto();
+        }, persist: false, cancellationToken);
+
+    public Task<QueueDto> NextAsync(string playerId, CancellationToken cancellationToken) =>
+        MoveAsync(playerId, q => q.GetNextIndex(), cancellationToken);
+
+    public Task<QueueDto> PreviousAsync(string playerId, CancellationToken cancellationToken) =>
+        MoveAsync(playerId, q => q.GetPreviousIndex(), cancellationToken);
+
+    public Task<QueueDto> SetShuffleAsync(string playerId, bool shuffle, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, (queue, _) =>
+        {
+            queue.SetShuffle(shuffle);
+            return Task.FromResult(queue.ToDto());
+        }, persist: true, cancellationToken);
+
+    public Task<QueueDto> SetRepeatAsync(string playerId, RepeatMode repeat, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, (queue, _) =>
+        {
+            queue.Repeat = repeat;
+            return Task.FromResult(queue.ToDto());
+        }, persist: true, cancellationToken);
+
+    public Task<QueueDto> RemoveAsync(string playerId, string queueItemId, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, (queue, _) =>
+        {
+            queue.Remove(queueItemId);
+            return Task.FromResult(queue.ToDto());
+        }, persist: true, cancellationToken);
+
+    public Task<QueueDto> ClearAsync(string playerId, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, (queue, _) =>
+        {
+            queue.Clear();
+            return Task.FromResult(queue.ToDto());
+        }, persist: true, cancellationToken);
+
+    private Task<QueueDto> MoveAsync(string playerId, Func<PlayerQueue, int?> selectIndex, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, async (queue, ct) =>
+        {
+            if (selectIndex(queue) is { } index)
+            {
+                await PlayIndexAsync(_players.GetAvailable(playerId), queue, index, ct);
+            }
+
+            return queue.ToDto();
+        }, persist: true, cancellationToken);
+
+    private async Task PlayIndexAsync(
+        IPlayer player,
+        PlayerQueue queue,
+        int index,
+        CancellationToken cancellationToken,
+        string? takeoverPlayerId = null,
+        TimeSpan startPosition = default)
+    {
+        queue.SetCurrent(index);
+        var item = queue.Items[index].Item;
+        var provider = _library.GetProvider(item.Ref.Provider);
+
+        // Playing on a member directly takes it out of its group.
+        _membership.Leave(player.Id);
+
+        // Remember who started playback, so the queue advancing on its own keeps using that user's accounts.
+        var userId = _currentUser.UserId ?? _lastUsers.GetValueOrDefault(player.Id);
+        if (userId is not null)
+        {
+            _lastUsers[player.Id] = userId;
+        }
+
+        var continuation = new QueueContinuation(this, player, queue.Items[index].Id);
+        StreamSource stream;
+        try
+        {
+            stream = await provider.ResolveStreamAsync(item.Ref, new PlaybackContext(player.Id, userId, takeoverPlayerId, continuation, startPosition), cancellationToken) switch
+            {
+                HttpStreamSource http => await _resolver.ResolveAsync(http, cancellationToken),
+                var other => other,
+            };
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or NotSupportedException)
+        {
+            throw new AugoraException(ErrorCodes.PlaybackFailed, $"Could not open the stream for '{item.Name}': {ex.Message}", 502, ex);
+        }
+
+        Uri url;
+        string path;
+        if (stream is ResolvedStream { Direct: true } direct)
+        {
+            url = direct.Url;
+            path = direct.Url.ToString();
+        }
+        else
+        {
+            var session = _sessions.Create(player.Id, stream);
+            url = _urls.GetStreamUrl(session);
+            path = session.RelativePath;
+        }
+
+        _logger.LogInformation("Playing {Item} on {Player} via {Url}", item.Ref, player.Name, url);
+
+        var continuous = stream is ProducedStreamSource { Continuous: true };
+        var media = MediaFor(item, url, path, stream.GetContentType(), stream.IsLive, continuous) with
+        {
+            // Only producers start further in; other streams start at the beginning.
+            StartPosition = stream is ProducedStreamSource ? startPosition : TimeSpan.Zero,
+        };
+        continuation.Media = media;
+        await player.PlayAsync(media, cancellationToken);
+    }
+
+    private PlayMedia MediaFor(MediaItem item, Uri url, string path, string contentType, bool isLive, bool continuous)
+    {
+        // Server artwork (local files) is relative; Cast devices need it absolute.
+        var imageUrl = item.ImageUrl is ['/', ..] relativeImage ? _urls.GetAbsoluteUrl(relativeImage).ToString() : item.ImageUrl;
+        return new PlayMedia(url, path, contentType, isLive, item.Ref.ToString(), item.Name, item.Subtitle, imageUrl, item.Duration, item.ImageUrl, continuous);
+    }
+
+    /// <summary>
+    /// Flow mode for one stream: moves the queue on to the next item when the producer can play it in the same stream.
+    /// Does nothing once the queue changed under the stream (another item was started).
+    /// </summary>
+    private sealed class QueueContinuation(QueueManager manager, IPlayer player, string queueItemId) : IQueueContinuation
+    {
+        private string _queueItemId = queueItemId;
+
+        /// <summary>The media of the stream as the player got it; set once the stream session exists.</summary>
+        public PlayMedia? Media { get; set; }
+
+        public async Task<MediaItem?> ContinueAsync(Func<MediaItem, bool> canPlay, TimeSpan streamOffset, CancellationToken cancellationToken)
+        {
+            MediaItem? next = null;
+            await manager.WithQueueAsync(player.Id, (queue, _) =>
+            {
+                var current = queue.CurrentIndex is { } index ? queue.Items[index].Id : null;
+                if (current == _queueItemId && queue.GetNextIndexAfterEnd() is { } nextIndex && canPlay(queue.Items[nextIndex].Item))
+                {
+                    queue.SetCurrent(nextIndex);
+                    _queueItemId = queue.Items[nextIndex].Id;
+                    next = queue.Items[nextIndex].Item;
+                }
+
+                return Task.FromResult(queue.ToDto());
+            }, persist: true, cancellationToken);
+
+            if (next is not null && Media is { } media)
+            {
+                manager._logger.LogInformation("Flow: {Item} continues the stream on {Player} at {Offset}", next.Ref, player.Name, streamOffset);
+                if (player is IContinuousStreamPlayer continuous)
+                {
+                    continuous.AddSegment(manager.MediaFor(next, media.StreamUrl, media.StreamPath, media.ContentType, media.IsLive, true), streamOffset);
+                }
+            }
+
+            return next;
+        }
+    }
+
+    private async void OnPlaybackEnded(object? sender, (IPlayer Player, PlaybackEndReason Reason) e)
+    {
+        if (_membership.GetGroup(e.Player.Id) is not null)
+        {
+            // The group's queue advances; the member's own queue stays where it was.
+            return;
+        }
+
+        try
+        {
+            await WithQueueAsync(e.Player.Id, async (queue, ct) =>
+            {
+                if (e.Reason == PlaybackEndReason.Error || queue.GetNextIndexAfterEnd() is not { } next)
+                {
+                    return queue.ToDto();
+                }
+
+                await PlayIndexAsync(e.Player, queue, next, ct);
+                return queue.ToDto();
+            }, persist: true, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Advancing the queue of {Player} failed", e.Player.Name);
+        }
+    }
+
+    private async Task<QueueDto> WithQueueAsync(
+        string playerId,
+        Func<PlayerQueue, CancellationToken, Task<QueueDto>> action,
+        bool persist,
+        CancellationToken cancellationToken)
+    {
+        var player = _players.Get(playerId);
+        var gate = _locks.GetOrAdd(player.Id, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (!_queues.TryGetValue(player.Id, out var queue))
+            {
+                var stored = await _store.LoadAsync(player.Id, cancellationToken);
+                queue = stored is null ? new PlayerQueue(player.Id) : PlayerQueue.FromDto(stored);
+                _queues[player.Id] = queue;
+            }
+
+            try
+            {
+                return await action(queue, cancellationToken);
+            }
+            finally
+            {
+                if (persist)
+                {
+                    var dto = queue.ToDto();
+                    await _store.SaveAsync(dto, CancellationToken.None);
+                    await _events.QueueUpdatedAsync(dto);
+                }
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+}

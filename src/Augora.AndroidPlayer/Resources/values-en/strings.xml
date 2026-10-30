@@ -1,0 +1,8 @@
+<resources>
+    <string name="augora_channel_name">Playback</string>
+    <string name="augora_player_idle">Ready to play</string>
+    <string name="augora_action_previous">Previous</string>
+    <string name="augora_action_play">Play</string>
+    <string name="augora_action_pause">Pause</string>
+    <string name="augora_action_next">Next</string>
+</resources>

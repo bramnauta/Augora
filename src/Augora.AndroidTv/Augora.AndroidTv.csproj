@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Android TV only; phones and tablets use Augora.Mobile. The player itself is Augora.AndroidPlayer. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <!-- Android 8.0: notification channels and audio focus requests. -->
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <ApplicationId>com.nauralta.augora.tv</ApplicationId>
+    <ApplicationTitle>Augora</ApplicationTitle>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <RootNamespace>Augora.AndroidTv</RootNamespace>
+    <!-- SignalR and the contracts are (de)serialised with reflection; trim only the framework. -->
+    <TrimMode>partial</TrimMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Augora.AndroidPlayer\Augora.AndroidPlayer.csproj" />
+  </ItemGroup>
+
+</Project>

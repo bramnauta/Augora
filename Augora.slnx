@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Augora.AndroidPlayer/Augora.AndroidPlayer.csproj" />
+    <Project Path="src/Augora.AndroidTv/Augora.AndroidTv.csproj" />
+    <Project Path="src/Augora.Client/Augora.Client.csproj" />
+    <Project Path="src/Augora.Mobile/Augora.Mobile.csproj" />
+    <Project Path="src/Augora.Players.Groups/Augora.Players.Groups.csproj" />
+    <Project Path="src/Augora.Providers.LocalFiles/Augora.Providers.LocalFiles.csproj" />
+    <Project Path="src/Augora.Providers.Podcasts/Augora.Providers.Podcasts.csproj" />
+    <Project Path="src/Augora.Providers.Spotify/Augora.Providers.Spotify.csproj" />
+  </Folder>
+  <Project Path="src/Augora.AppHost/Augora.AppHost.csproj" />
+  <Project Path="src/Augora.Contracts/Augora.Contracts.csproj" />
+  <Project Path="src/Augora.Core/Augora.Core.csproj" />
+  <Project Path="src/Augora.Players.GoogleCast/Augora.Players.GoogleCast.csproj" />
+  <Project Path="src/Augora.Players.Remote/Augora.Players.Remote.csproj" />
+  <Project Path="src/Augora.Providers.TuneIn/Augora.Providers.TuneIn.csproj" />
+  <Project Path="src/Augora.Server/Augora.Server.csproj" />
+  <Project Path="src/Augora.ServiceDefaults/Augora.ServiceDefaults.csproj" />
+  <Project Path="src/Augora.Web/Augora.Web.csproj" />
+  <Project Path="tests/Augora.Tests/Augora.Tests.csproj" />
+</Solution>

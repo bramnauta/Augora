@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The native Android player (foreground service, MediaPlayer, media session, notification), shared by the
+       phone/tablet app (Augora.Mobile) and the Android TV app (Augora.AndroidTv). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <!-- Android 8.0: notification channels and audio focus requests. -->
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <RootNamespace>Augora.AndroidPlayer</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Augora.Client\Augora.Client.csproj" />
+  </ItemGroup>
+
+</Project>

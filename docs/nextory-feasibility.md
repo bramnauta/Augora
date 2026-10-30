@@ -1,6 +1,6 @@
 # Nextory – haalbaarheidsonderzoek
 
-Datum: 29 oktober 2026. Doel: kan AudioCentral luisterboeken van Nextory afspelen op Google Home, in de
+Datum: 29 oktober 2026. Doel: kan Augora luisterboeken van Nextory afspelen op Google Home, in de
 browser en op Android, net als de andere bronnen?
 
 ## Conclusie
@@ -32,10 +32,10 @@ breken. Implementatie volgt pas als een van de routes hieronder open gaat.
    (gewone MP3/AAC of HLS zonder sleutels achter een gesigneerde URL). Dan is een provider technisch
    eenvoudig, maar kwetsbaar (API kan zonder aankondiging wijzigen) en waarschijnlijk in strijd met de
    voorwaarden. Is de audio wel beveiligd (Widevine/FairPlay of versleutelde HLS met een licentieserver),
-   dan stopt het hier: AudioCentral omzeilt geen DRM.
+   dan stopt het hier: Augora omzeilt geen DRM.
 3. **Nu al luisteren op Google Home zonder integratie.** Cast vanuit de Nextory-app als die een Cast-knop
    heeft, anders "Mijn audio casten" in de Google Home-app op Android, of de browser-tab casten vanuit
-   Chrome als de webspeler werkt. AudioCentral toont de speaker dan als "in gebruik door een andere app".
+   Chrome als de webspeler werkt. Augora toont de speaker dan als "in gebruik door een andere app".
 
 ## Wat nodig is om verder te gaan
 
@@ -45,7 +45,7 @@ breken. Implementatie volgt pas als een van de routes hieronder open gaat.
   beveiligd is en welke endpoints nodig zijn. Deel geen wachtwoorden; tokens in de opname kun je daarna
   intrekken door uit te loggen.
 
-## Voorbereiding in AudioCentral
+## Voorbereiding in Augora
 
 Wat een Nextory-provider nodig heeft, is grotendeels al aanwezig:
 

@@ -1,6 +1,6 @@
 **/bin/
 **/obj/
-**/audiocentral.db*
+**/augora.db*
 **/.vs/
 **/.idea/
 **/*.user

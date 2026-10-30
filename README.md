@@ -1,4 +1,4 @@
-# AudioCentral
+# Augora
 
 Self-hosted muziekserver: bronnen (TuneIn, Spotify, lokale
 bestanden, podcasts, Nextory) afspelen op Google Cast-apparaten en -groepen, in de browser en
@@ -15,7 +15,8 @@ op Android. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp en roa
 - ✅ Spotify: meerdere accounts, bladeren (playlists, nummers, albums, artiesten), zoeken, afspelen via go-librespot
 - ✅ Lokale bestanden (NAS): bladeren per map, artiest en album, zoeken in tags, artwork
 - ✅ Podcasts: abonneren via RSS-URL of zoeken in de iTunes-catalogus
-- ✅ Android-app (telefoon en TV): de UI plus een native speler die op de achtergrond doorspeelt
+- ✅ Android-app (telefoon, tablet en TV): de UI plus een native speler die op de achtergrond doorspeelt
+- 🚧 iOS-app (iPhone en iPad, MAUI): gebouwd, maar nog niet getest op een toestel
 - ✅ Home Assistant-integratie: media players, mediabrowser, realtime updates
 - ✅ Eigen groepen: spelers van elk type samen laten spelen (losjes synchroon, één bron en één Spotify-account per groep)
 - ❌ Nextory: onderzocht, nu niet betrouwbaar te bouwen; zie [docs/nextory-feasibility.md](docs/nextory-feasibility.md)
@@ -26,14 +27,15 @@ Bij de eerste start vraagt de UI om het eerste account aan te maken; dat wordt b
 
 1. Maak een app op [developer.spotify.com](https://developer.spotify.com/dashboard) (Web API) en zet
    als redirect-URI `https://<jouw-host>/api/spotify/callback`. Spotify accepteert alleen https, behalve
-   voor `http://127.0.0.1:<poort>`. De exacte URI staat op de Spotify-pagina in AudioCentral.
-2. Zet de client-id in `Providers__Spotify__ClientId`, of vul per account een eigen client-id in.
+   voor `http://127.0.0.1:<poort>`. De exacte URI staat op de Spotify-pagina in Augora.
+2. Vul de client-id in als beheerder onder **Spotify** in de UI (of zet `Providers__Spotify__ClientId`),
+   of vul per account een eigen client-id in.
    Een app in development mode staat maximaal vijf Spotify-gebruikers toe, die je in het dashboard
    moet toevoegen; de eigenaar van de app heeft Premium nodig.
 3. Koppel onder **Spotify** in de UI je account. Iedere gebruiker koppelt zijn eigen account;
    beheerders kunnen ook gedeelde accounts koppelen.
 
-Spotify staat één stream per account toe. Bij afspelen kiest AudioCentral eerst je eigen account,
+Spotify staat één stream per account toe. Bij afspelen kiest Augora eerst je eigen account,
 dan een gedeeld account, dan een vrij account van een ander. Is er geen account vrij, dan biedt de UI
 aan een stream te stoppen; via de API krijg je `409 spotify_no_free_account` met de lijst `holders`
 en kun je het verzoek herhalen met `takeoverPlayerId`.
@@ -49,44 +51,62 @@ meewerkt; gevolgde playlists zijn daardoor niet af te spelen.
 | Engine | Koppelen | Opmerkingen |
 |---|---|---|
 | go-librespot (standaard) | Eenmalig een code goedkeuren op spotify.com/pair | Zit in de image. Spotify weigert voor veel (nieuwere) accounts de sleutel van nummers: `failed retrieving aes key`. |
-| Spotify Soloist | Eenmalig in de Spotify-app het apparaat "AudioCentral (naam)" kiezen, op hetzelfde netwerk | Spotify's eigen client; werkt met alle Premium-accounts. Kies hem onder **Spotify** → het instellingen-icoon bij een account. |
+| Spotify Soloist | Eenmalig in de Spotify-app het apparaat "Augora (naam)" kiezen, op hetzelfde netwerk | Spotify's eigen client; werkt met alle Premium-accounts. Kies hem onder **Spotify** → het instellingen-icoon bij een account. |
 
 Over Soloist:
 
-- Spotify verbiedt het meeleveren ervan. AudioCentral downloadt hem pas nadat je dat per account hebt
+- Spotify verbiedt het meeleveren ervan. Augora downloadt hem pas nadat je dat per account hebt
   goedgekeurd, van `soloist-builds.spotifycdn.com`, en vervangt hem voordat hij na 90 dagen verloopt.
   De voorwaarden van Spotify staan dit gebruik niet duidelijk toe: op eigen risico.
 - Je hebt een API-key nodig van [developer.spotify.com/dashboard/soloist](https://developer.spotify.com/dashboard/soloist),
   aangemaakt met hetzelfde Premium-account.
-- Soloist speelt alleen af via PulseAudio of PipeWire. In de container draait AudioCentral daarom een eigen
+- Soloist speelt alleen af via PulseAudio of PipeWire. In de container draait Augora daarom een eigen
   PulseAudio-daemon met een virtuele uitgang per account, en ffmpeg neemt die op.
 - Koppelen gaat via Spotify Connect (mDNS). Dat werkt in de Home Assistant-app en met macvlan, maar niet
   in Docker Desktop.
 
-## Android-app
+## Apps
 
-`src/AudioCentral.Android` (C#, .NET for Android, Android 8.0+, ook Android TV). Bouwen en installeren
-op een toestel met USB-debugging:
-
-```bash
-dotnet build src/AudioCentral.Android -t:Install -c Release
-```
+| App | Project | Platform |
+|---|---|---|
+| Telefoon en tablet | `src/Augora.Mobile` (.NET MAUI) | Android 8.0+ en iOS 15+ |
+| Android TV | `src/Augora.AndroidTv` (.NET for Android) | Android TV, Android 8.0+ |
 
 Bij de eerste start vraagt de app het serveradres. Daarna toont hij de gewone UI, waar je inlogt (ook met
 OIDC). De app wisselt die sessie in voor tokens (`POST /api/auth/token`) en meldt het toestel aan als
-speler. Het afspelen loopt in een foreground service met mediabediening in de notificatie, op het
-vergrendelscherm en via Bluetooth/TV-afstandsbediening. Een ander serveradres instellen: app-gegevens
-wissen, of de server onbereikbaar maken (dan verschijnt het adresscherm).
+speler. Het afspelen loopt native, met mediabediening op het vergrendelscherm en via
+Bluetooth/TV-afstandsbediening. Een ander serveradres instellen: app-gegevens wissen, of de server
+onbereikbaar maken (dan verschijnt het adresscherm).
+
+Installeren op een Android-toestel met USB-debugging:
+
+```bash
+dotnet build src/Augora.Mobile -f net10.0-android -t:Install -c Release
+dotnet build src/Augora.AndroidTv -t:Install -c Release
+```
+
+De iOS-app bouwen kan alleen op een Mac (of vanuit Visual Studio, gekoppeld aan een Mac) met Xcode en de
+`ios`- en `maui`-workloads. Op macOS staat het iOS-target vanzelf aan; elders zet je `-p:BuildIos=true`
+(dan compileert het, maar installeren kan niet). Een geïnstalleerde app zonder betaald Apple
+Developer-account verloopt na 7 dagen.
+
+```bash
+dotnet build src/Augora.Mobile -f net10.0-ios -c Release
+```
+
+Beperking op iOS: er is geen service die op de achtergrond blijft draaien. Zolang er iets speelt blijft de
+app actief (achtergrondaudio), maar een stilstaande app kan door iOS worden onderbroken; dan is het toestel
+pas weer als speler beschikbaar zodra je de app opent.
 
 ## Home Assistant
 
-Kopieer `integrations/homeassistant/custom_components/audiocentral` naar `config/custom_components/`
-van Home Assistant en herstart. Voeg de integratie toe met de URL van AudioCentral en een API-token
+Kopieer `integrations/homeassistant/custom_components/augora` naar `config/custom_components/`
+van Home Assistant en herstart. Voeg de integratie toe met de URL van Augora en een API-token
 (maak dat aan onder **Account**). Elke speler wordt een `media_player`:
 
 - afspelen, pauzeren, volgende/vorige, volume, mute, shuffle en herhalen;
 - de mediabrowser toont alle bronnen (TuneIn, Spotify, lokale muziek, podcasts);
-- `media_player.play_media` met een AudioCentral-URI, bijv.
+- `media_player.play_media` met een Augora-URI, bijv.
 
 ```yaml
 action: media_player.play_media
@@ -106,7 +126,7 @@ een fout met wie ze gebruiken.
 Vereist: .NET SDK 10.0.400+, Docker (optioneel).
 
 ```bash
-dotnet run --project src/AudioCentral.AppHost
+dotnet run --project src/Augora.AppHost
 ```
 
 Het Aspire-dashboard opent; de UI staat onder de `server`-resource. Cast-apparaten halen audio
@@ -116,7 +136,7 @@ Spotify-audio (go-librespot) werkt alleen onder Linux. Om dat lokaal te testen s
 als container uit de `Dockerfile`:
 
 ```bash
-dotnet run --project src/AudioCentral.AppHost --launch-profile container
+dotnet run --project src/Augora.AppHost --launch-profile container
 ```
 
 De UI staat dan op `http://127.0.0.1:4727`. Gebruik dat adres, niet `localhost`, als redirect-URI bij
@@ -124,18 +144,18 @@ Spotify (`http://127.0.0.1:4727/api/spotify/callback`). Speakers halen de stream
 het LAN-IP van je pc. Docker Desktop laat mDNS niet door; daarom zoekt de AppHost de speakers en
 groepen bij het starten op Windows en geeft ze door aan de container (`Players__GoogleCast__Devices`).
 Nieuwe speakers of gewijzigde groepspoorten verschijnen na een herstart van de AppHost.
-Data staat in het Docker-volume `audiocentral-dev-data`.
+Data staat in het Docker-volume `augora-dev-data`.
 
 Tests:
 
 ```bash
-dotnet test --project tests/AudioCentral.Tests
+dotnet test --project tests/Augora.Tests
 ```
 
 Nieuwe EF Core-migratie:
 
 ```bash
-dotnet dotnet-ef migrations add <Naam> --project src/AudioCentral.Server --output-dir Data/Migrations
+dotnet dotnet-ef migrations add <Naam> --project src/Augora.Server --output-dir Data/Migrations
 ```
 
 ## Draaien in Docker
@@ -149,13 +169,13 @@ vrij IP buiten de DHCP-pool in. Daarna:
 docker compose up -d --build
 ```
 
-De UI staat dan op `http://<AUDIOCENTRAL_IP>:4727`.
+De UI staat dan op `http://<AUGORA_IP>:4727`.
 
 - **Reverse proxy op dezelfde host:** macvlan sluit de host zelf af van de container. Hang je
-  proxy-container daarom aan het `proxy`-netwerk uit de compose en proxy naar `http://audiocentral:4727`.
+  proxy-container daarom aan het `proxy`-netwerk uit de compose en proxy naar `http://augora:4727`.
 - **Speakers in een ander VLAN:** gebruik als `LAN_PARENT` de VLAN-interface van dat netwerk
-  (bijv. `eth0.20`), of laat de router mDNS reflecteren en verkeer naar `AUDIOCENTRAL_IP:4727` toe.
-- **Liever een gewoon bridge-netwerk:** publiceer poort 4727, zet `AudioCentral__StreamBaseUrl` op
+  (bijv. `eth0.20`), of laat de router mDNS reflecteren en verkeer naar `AUGORA_IP:4727` toe.
+- **Liever een gewoon bridge-netwerk:** publiceer poort 4727, zet `Augora__StreamBaseUrl` op
   het LAN-adres van de host en voeg de speakers handmatig toe onder Instellingen (mDNS werkt dan niet).
   Zonder `StreamBaseUrl` waarschuwt de log dat spelers een Docker-adres krijgen. Docker Desktop
   (Windows/macOS) ondersteunt macvlan niet goed; gebruik daar deze bridge-opzet.
@@ -164,14 +184,14 @@ Belangrijke instellingen (omgevingsvariabelen):
 
 | Variabele | Betekenis |
 |---|---|
-| `AudioCentral__StreamBaseUrl` | URL waarop spelers de server bereiken, bijv. `http://192.168.1.10:4727`. Leeg = LAN-IP detecteren. |
-| `AudioCentral__PublicBaseUrl` | Publieke URL achter een reverse proxy. |
-| `Providers__TuneIn__Username` | TuneIn-gebruikersnaam voor favorieten. |
-| `Providers__Spotify__ClientId` | Standaard client-id van je Spotify-app. |
-| `Providers__LocalFiles__Folders__0__Name` / `__Path` | Muziekmap, bijv. `Muziek` en `/music` (koppel je NAS-share als volume). Meer mappen met `__1__`, `__2__`, ... De naam zit in elke item-id: houd hem stabiel. |
-| `Providers__LocalFiles__RescanInterval` | Hoe vaak de mappen opnieuw gescand worden (standaard `06:00:00`); beheerders kunnen onder Instellingen direct scannen. |
+| `Augora__StreamBaseUrl` | URL waarop spelers de server bereiken, bijv. `http://192.168.1.10:4727`. Leeg = LAN-IP detecteren. |
+| `Augora__PublicBaseUrl` | Publieke URL achter een reverse proxy. |
+| `Providers__TuneIn__Username` | TuneIn-gebruikersnaam voor favorieten. Optioneel: beheerders stellen het ook in onder Instellingen in de UI; wat daar staat gaat voor. |
+| `Providers__Spotify__ClientId` | Standaard client-id van je Spotify-app. Optioneel: beheerders stellen het ook in onder Spotify in de UI; wat daar staat gaat voor. |
+| `Providers__LocalFiles__Folders__0__Name` / `__Path` | Muziekmap, bijv. `Muziek` en `/music` (koppel je NAS-share als volume). Meer mappen met `__1__`, `__2__`, ... De naam zit in elke item-id: houd hem stabiel. Optioneel: beheerders beheren de mappen ook onder Instellingen in de UI; wat daar staat gaat voor. Het volume moet wel in de container gekoppeld zijn. |
+| `Providers__LocalFiles__RescanInterval` | Hoe vaak de mappen opnieuw gescand worden (standaard `06:00:00`). Beheerders kunnen het interval ook onder Instellingen in de UI zetten (5 minuten tot 7 dagen; gaat voor) en direct scannen. |
 | `Players__GoogleCast__Discovery` | `false` om mDNS uit te zetten (alleen handmatige apparaten). |
-| `Players__GoogleCast__ReceiverAppId` | Eigen Cast-receiver, zodat speakers "AudioCentral" tonen in plaats van "Default Media Receiver". Registreer in de [Google Cast SDK Developer Console](https://cast.google.com/publish) een *Styled Media Receiver* met die naam en publiceer hem. |
+| `Players__GoogleCast__ReceiverAppId` | Eigen Cast-receiver, zodat speakers "Augora" tonen in plaats van "Default Media Receiver". Registreer in de [Google Cast SDK Developer Console](https://cast.google.com/publish) een *Styled Media Receiver* met die naam en publiceer hem. |
 | `Providers__Spotify__SoloistPreroll` | Stilte die aan het begin van een Soloist-nummer in één keer wordt verstuurd, zodat speakers sneller starten (standaard `00:00:03`; `00:00:00` = uit). |
 | `Authentication__Oidc__Authority` | Issuer-URL van je OIDC-provider; leeg = geen SSO. Redirect-URI: `https://<host>/signin-oidc`. |
 | `Authentication__Oidc__ClientId` / `__ClientSecret` | Client-gegevens bij de OIDC-provider. |

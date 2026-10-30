@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>Augora</value></data>
+  <data name="Nav_Players" xml:space="preserve"><value>Spelers</value></data>
+  <data name="Nav_Browse" xml:space="preserve"><value>Bladeren</value></data>
+  <data name="Nav_Search" xml:space="preserve"><value>Zoeken</value></data>
+  <data name="Nav_Queue" xml:space="preserve"><value>Wachtrij</value></data>
+  <data name="Nav_Settings" xml:space="preserve"><value>Instellingen</value></data>
+  <data name="SelectPlayer" xml:space="preserve"><value>Kies een speler</value></data>
+  <data name="NoPlayers" xml:space="preserve"><value>Nog geen spelers gevonden. Google Cast-apparaten verschijnen automatisch, of voeg ze toe bij Instellingen.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>Niet beschikbaar</value></data>
+  <data name="NothingPlaying" xml:space="preserve"><value>Niets aan het afspelen</value></data>
+  <data name="Play" xml:space="preserve"><value>Afspelen</value></data>
+  <data name="Pause" xml:space="preserve"><value>Pauzeren</value></data>
+  <data name="Resume" xml:space="preserve"><value>Hervatten</value></data>
+  <data name="Stop" xml:space="preserve"><value>Stoppen</value></data>
+  <data name="Next" xml:space="preserve"><value>Volgende</value></data>
+  <data name="Previous" xml:space="preserve"><value>Vorige</value></data>
+  <data name="Mute" xml:space="preserve"><value>Dempen</value></data>
+  <data name="Unmute" xml:space="preserve"><value>Dempen opheffen</value></data>
+  <data name="Volume" xml:space="preserve"><value>Volume</value></data>
+  <data name="Seek" xml:space="preserve"><value>Positie</value></data>
+  <data name="PlayNext" xml:space="preserve"><value>Hierna afspelen</value></data>
+  <data name="AddToQueue" xml:space="preserve"><value>Toevoegen aan wachtrij</value></data>
+  <data name="Library" xml:space="preserve"><value>Bibliotheek</value></data>
+  <data name="SearchPlaceholder" xml:space="preserve"><value>Zoek zenders, podcasts, ...</value></data>
+  <data name="NoResults" xml:space="preserve"><value>Geen resultaten</value></data>
+  <data name="EmptyFolder" xml:space="preserve"><value>Deze map is leeg</value></data>
+  <data name="Live" xml:space="preserve"><value>Live</value></data>
+  <data name="ControlledBy" xml:space="preserve"><value>Bediend door {0}</value></data>
+  <data name="NoPlayerSelected" xml:space="preserve"><value>Kies eerst een speler om op af te spelen.</value></data>
+  <data name="PlayingOn" xml:space="preserve"><value>Speelt af op {0}</value></data>
+  <data name="Added" xml:space="preserve"><value>Toegevoegd aan de wachtrij van {0}</value></data>
+  <data name="Error" xml:space="preserve"><value>Er ging iets mis</value></data>
+  <data name="QueueEmpty" xml:space="preserve"><value>De wachtrij is leeg</value></data>
+  <data name="ClearQueue" xml:space="preserve"><value>Wachtrij leegmaken</value></data>
+  <data name="Remove" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="Reconnecting" xml:space="preserve"><value>Verbinding met de server verbroken, opnieuw verbinden...</value></data>
+  <data name="Kind_Speaker" xml:space="preserve"><value>Speaker</value></data>
+  <data name="Kind_Tv" xml:space="preserve"><value>Tv</value></data>
+  <data name="Kind_DeviceGroup" xml:space="preserve"><value>Groep</value></data>
+  <data name="Kind_SyncGroup" xml:space="preserve"><value>Sync-groep</value></data>
+  <data name="Kind_Browser" xml:space="preserve"><value>Browser</value></data>
+  <data name="Kind_Phone" xml:space="preserve"><value>Telefoon</value></data>
+  <data name="Language" xml:space="preserve"><value>Taal</value></data>
+  <data name="ManualDevices" xml:space="preserve"><value>Handmatig toegevoegde Cast-apparaten</value></data>
+  <data name="ManualDevicesHelp" xml:space="preserve"><value>Gebruik dit als Google Home-apparaten niet automatisch gevonden worden, bijvoorbeeld omdat ze in een ander VLAN zitten dan Augora. Een speaker gebruikt poort 8009; een groep heeft een eigen poort (zie de Google Home-app of je router).</value></data>
+  <data name="Name" xml:space="preserve"><value>Naam</value></data>
+  <data name="Host" xml:space="preserve"><value>IP-adres of hostnaam</value></data>
+  <data name="Port" xml:space="preserve"><value>Poort</value></data>
+  <data name="Add" xml:space="preserve"><value>Toevoegen</value></data>
+  <data name="NoManualDevices" xml:space="preserve"><value>Geen handmatige apparaten</value></data>
+  <data name="Back" xml:space="preserve"><value>Terug</value></data>
+  <data name="Nav_Users" xml:space="preserve"><value>Gebruikers</value></data>
+  <data name="Nav_Account" xml:space="preserve"><value>Account</value></data>
+  <data name="Logout" xml:space="preserve"><value>Uitloggen</value></data>
+  <data name="Login" xml:space="preserve"><value>Inloggen</value></data>
+  <data name="LoginWith" xml:space="preserve"><value>Inloggen met {0}</value></data>
+  <data name="UserName" xml:space="preserve"><value>Gebruikersnaam</value></data>
+  <data name="Password" xml:space="preserve"><value>Wachtwoord</value></data>
+  <data name="PasswordHint" xml:space="preserve"><value>Minimaal 8 tekens</value></data>
+  <data name="LoginFailed" xml:space="preserve"><value>Inloggen mislukt</value></data>
+  <data name="ExternalLoginFailed" xml:space="preserve"><value>Inloggen via de externe provider is mislukt.</value></data>
+  <data name="SetupTitle" xml:space="preserve"><value>Welkom bij Augora</value></data>
+  <data name="SetupIntro" xml:space="preserve"><value>Maak het eerste account aan. Dit account wordt beheerder.</value></data>
+  <data name="DisplayName" xml:space="preserve"><value>Weergavenaam</value></data>
+  <data name="CreateAccount" xml:space="preserve"><value>Account aanmaken</value></data>
+  <data name="ChangePassword" xml:space="preserve"><value>Wachtwoord wijzigen</value></data>
+  <data name="CurrentPassword" xml:space="preserve"><value>Huidig wachtwoord</value></data>
+  <data name="NewPassword" xml:space="preserve"><value>Nieuw wachtwoord</value></data>
+  <data name="PasswordChanged" xml:space="preserve"><value>Wachtwoord gewijzigd</value></data>
+  <data name="ApiTokens" xml:space="preserve"><value>API-tokens</value></data>
+  <data name="ApiTokensHelp" xml:space="preserve"><value>Langlevende tokens voor Home Assistant en scripts. Stuur ze mee als 'Authorization: Bearer &lt;token&gt;'.</value></data>
+  <data name="TokenName" xml:space="preserve"><value>Naam (bijv. Home Assistant)</value></data>
+  <data name="CreateToken" xml:space="preserve"><value>Token aanmaken</value></data>
+  <data name="TokenCreated" xml:space="preserve"><value>Kopieer het token nu: het wordt maar één keer getoond.</value></data>
+  <data name="NoTokens" xml:space="preserve"><value>Nog geen tokens</value></data>
+  <data name="LastUsed" xml:space="preserve"><value>Laatst gebruikt</value></data>
+  <data name="Never" xml:space="preserve"><value>Nooit</value></data>
+  <data name="Revoke" xml:space="preserve"><value>Intrekken</value></data>
+  <data name="Created" xml:space="preserve"><value>Aangemaakt</value></data>
+  <data name="Copy" xml:space="preserve"><value>Kopiëren</value></data>
+  <data name="Copied" xml:space="preserve"><value>Gekopieerd</value></data>
+  <data name="Admin" xml:space="preserve"><value>Beheerder</value></data>
+  <data name="RegularUser" xml:space="preserve"><value>Gebruiker</value></data>
+  <data name="NewUser" xml:space="preserve"><value>Nieuwe gebruiker</value></data>
+  <data name="ResetPassword" xml:space="preserve"><value>Wachtwoord resetten</value></data>
+  <data name="Delete" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="ConfirmDeleteUser" xml:space="preserve"><value>Gebruiker {0} verwijderen?</value></data>
+  <data name="Save" xml:space="preserve"><value>Opslaan</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Annuleren</value></data>
+  <data name="Saved" xml:space="preserve"><value>Opgeslagen</value></data>
+  <data name="Or" xml:space="preserve"><value>of</value></data>
+  <data name="BrowserPlayer" xml:space="preserve"><value>Deze browser als speler</value></data>
+  <data name="BrowserPlayerReleased" xml:space="preserve"><value>Een ander tabblad gebruikt deze browser nu als speler.</value></data>
+  <data name="AutoplayBlocked" xml:space="preserve"><value>De browser blokkeert automatisch afspelen. Klik om geluid toe te staan.</value></data>
+  <data name="AllowPlayback" xml:space="preserve"><value>Afspelen toestaan</value></data>
+  <data name="ForgetPlayer" xml:space="preserve"><value>Speler vergeten</value></data>
+  <data name="Nav_Spotify" xml:space="preserve"><value>Spotify</value></data>
+  <data name="SpotifyAccounts" xml:space="preserve"><value>Spotify-accounts</value></data>
+  <data name="SpotifyHelp" xml:space="preserve"><value>Koppel een Spotify Premium-account. Spotify staat één stream per account toe: bij het afspelen kiest Augora eerst je eigen account, dan een gedeeld account, dan een vrij account van een ander.</value></data>
+  <data name="SpotifyLink" xml:space="preserve"><value>Account koppelen</value></data>
+  <data name="SpotifyShared" xml:space="preserve"><value>Gedeeld account (voor iedereen gelijk)</value></data>
+  <data name="SpotifyClientId" xml:space="preserve"><value>Eigen client-id (optioneel)</value></data>
+  <data name="SpotifyRedirectHelp" xml:space="preserve"><value>Registreer deze redirect-URI in je app op developer.spotify.com:</value></data>
+  <data name="SpotifyNoClientId" xml:space="preserve"><value>Er is geen standaard client-id ingesteld. Vul hieronder een eigen client-id in.</value></data>
+  <data name="SpotifyNoAccounts" xml:space="preserve"><value>Nog geen Spotify-accounts gekoppeld.</value></data>
+  <data name="SpotifyLinked" xml:space="preserve"><value>Spotify-account gekoppeld</value></data>
+  <data name="SpotifyDisabled" xml:space="preserve"><value>Spotify is uitgeschakeld op deze server.</value></data>
+  <data name="SpotifyStreamingOn" xml:space="preserve"><value>Speelt op {0}</value></data>
+  <data name="SpotifyOwner" xml:space="preserve"><value>Van {0}</value></data>
+  <data name="SpotifySharedLabel" xml:space="preserve"><value>Gedeeld</value></data>
+  <data name="SpotifyBusyTitle" xml:space="preserve"><value>Alle Spotify-accounts zijn in gebruik</value></data>
+  <data name="SpotifyBusyText" xml:space="preserve"><value>Spotify staat één stream per account toe. Stop een van deze streams om het account over te nemen:</value></data>
+  <data name="SpotifyBusyNone" xml:space="preserve"><value>Geen van deze streams gebruikt jouw account of een gedeeld account. Vraag de eigenaar of koppel een eigen account.</value></data>
+  <data name="SpotifyTakeOver" xml:space="preserve"><value>Stoppen en overnemen</value></data>
+  <data name="ConfirmRemoveSpotify" xml:space="preserve"><value>Spotify-account {0} ontkoppelen?</value></data>
+  <data name="Nav_Podcasts" xml:space="preserve"><value>Podcasts</value></data>
+  <data name="PodcastSubscriptions" xml:space="preserve"><value>Abonnementen</value></data>
+  <data name="NoPodcasts" xml:space="preserve"><value>Nog geen podcasts. Zoek er hieronder een of plak de URL van een RSS-feed.</value></data>
+  <data name="PodcastFind" xml:space="preserve"><value>Podcast toevoegen</value></data>
+  <data name="PodcastSearchOrUrl" xml:space="preserve"><value>Zoeken of RSS-feed-URL</value></data>
+  <data name="Subscribe" xml:space="preserve"><value>Abonneren</value></data>
+  <data name="Subscribed" xml:space="preserve"><value>Geabonneerd</value></data>
+  <data name="Unsubscribe" xml:space="preserve"><value>Opzeggen</value></data>
+  <data name="ConfirmUnsubscribe" xml:space="preserve"><value>Abonnement op {0} opzeggen?</value></data>
+  <data name="LocalLibrary" xml:space="preserve"><value>Lokale muziek</value></data>
+  <data name="LocalLibraryDisabled" xml:space="preserve"><value>Lokale muziek is uitgeschakeld in de serverconfiguratie (Providers__LocalFiles__Enabled).</value></data>
+  <data name="LocalFoldersHelp" xml:space="preserve"><value>Mappen op de server, bijvoorbeeld een NAS-share gekoppeld op /music. De naam zit in elke item-id: houd hem stabiel.</value></data>
+  <data name="LocalFoldersNone" xml:space="preserve"><value>Er zijn geen muziekmappen ingesteld.</value></data>
+  <data name="LocalFoldersFromConfig" xml:space="preserve"><value>Deze mappen komen uit de serverconfiguratie. Wijzig je ze hier, dan gaan jouw instellingen voor.</value></data>
+  <data name="RescanInterval" xml:space="preserve"><value>Scannen elke (minuten)</value></data>
+  <data name="TuneInDisabled" xml:space="preserve"><value>TuneIn is uitgeschakeld in de serverconfiguratie (Providers__TuneIn__Enabled).</value></data>
+  <data name="TuneInHelp" xml:space="preserve"><value>Met een TuneIn-gebruikersnaam verschijnen je presets als Favorieten.</value></data>
+  <data name="TuneInUsername" xml:space="preserve"><value>Gebruikersnaam</value></data>
+  <data name="TuneInFromConfig" xml:space="preserve"><value>Deze gebruikersnaam komt uit de serverconfiguratie.</value></data>
+  <data name="CannotChangeSelf" xml:space="preserve"><value>Je kunt je eigen account niet verwijderen of de beheerdersrol afnemen; vraag een andere beheerder.</value></data>
+  <data name="Path" xml:space="preserve"><value>Pad</value></data>
+  <data name="ResetToDefault" xml:space="preserve"><value>Terug naar serverinstelling</value></data>
+  <data name="SpotifyDefaultClientId" xml:space="preserve"><value>Standaard client-id</value></data>
+  <data name="SpotifyDefaultClientIdHelp" xml:space="preserve"><value>Client-id van je Spotify-app, voor iedereen die geen eigen client-id invult.</value></data>
+  <data name="SpotifyDefaultClientIdFromConfig" xml:space="preserve"><value>Dit client-id komt uit de serverconfiguratie.</value></data>
+  <data name="LocalLibraryStatus" xml:space="preserve"><value>{0} nummers in de index.</value></data>
+  <data name="Rescan" xml:space="preserve"><value>Nu scannen</value></data>
+  <data name="RescanStarted" xml:space="preserve"><value>Scan gestart</value></data>
+  <data name="SpotifyPairTitle" xml:space="preserve"><value>Afspelen goedkeuren</value></data>
+  <data name="SpotifyPairText" xml:space="preserve"><value>De audio-engine van Augora logt apart in bij Spotify. Keur hem één keer goed met hetzelfde Spotify-account ({0}): open de link, log in en bevestig. Vraagt Spotify om een code, vul dan deze in:</value></data>
+  <data name="SpotifyPairOpen" xml:space="preserve"><value>Open spotify.com/pair</value></data>
+  <data name="SpotifyPairDone" xml:space="preserve"><value>Ik heb het goedgekeurd</value></data>
+  <data name="SpotifyPairPending" xml:space="preserve"><value>Nog niet goedgekeurd. Rond het af in het geopende tabblad en probeer het opnieuw.</value></data>
+  <data name="SpotifyPairButton" xml:space="preserve"><value>Afspelen koppelen</value></data>
+  <data name="SpotifyPaired" xml:space="preserve"><value>Afspelen is gekoppeld</value></data>
+  <data name="SpotifyPairConnectText" xml:space="preserve"><value>De audio-engine logt apart in bij Spotify. Open de Spotify-app op een apparaat in hetzelfde netwerk, ingelogd als {0}, tik op het luidspreker-icoon en kies dit apparaat:</value></data>
+  <data name="SpotifyEngine" xml:space="preserve"><value>Afspeel-engine</value></data>
+  <data name="SoloistIntro" xml:space="preserve"><value>Spotify Soloist is Spotify's eigen client zonder scherm. Hij werkt met alle Premium-accounts, ook als go-librespot de nummers niet mag afspelen. Augora downloadt hem voor je van Spotify en houdt hem bij; hij verloopt elke 90 dagen.</value></data>
+  <data name="SoloistTerms" xml:space="preserve"><value>Spotify verbiedt het meeleveren van Soloist, en de voorwaarden van Spotify staan dit gebruik niet duidelijk toe. Je gebruikt het op eigen risico.</value></data>
+  <data name="SoloistKeyHelp" xml:space="preserve"><value>Maak met dit Spotify-account (Premium) een API-key aan op</value></data>
+  <data name="SoloistApiKey" xml:space="preserve"><value>Soloist-API-key</value></data>
+  <data name="SoloistKeyKeep" xml:space="preserve"><value>Leeg laten om de opgeslagen key te houden</value></data>
+  <data name="SoloistAccept" xml:space="preserve"><value>Ik ga ermee akkoord dat Augora Spotify Soloist voor mij downloadt en gebruikt, op eigen risico</value></data>
+  <data name="Nav_Groups" xml:space="preserve"><value>Groepen</value></data>
+  <data name="GroupsHelp" xml:space="preserve"><value>Een groep speelt hetzelfde op spelers van elk type tegelijk (Cast, browser, telefoon, TV) en verschijnt als eigen speler. Ze starten samen, maar elk apparaat buffert anders: verwacht kleine verschillen. Voor alleen Google Home-speakers is een Cast-groep uit de Google Home-app strakker synchroon.</value></data>
+  <data name="GroupNew" xml:space="preserve"><value>Nieuwe groep</value></data>
+  <data name="GroupEdit" xml:space="preserve"><value>{0} bewerken</value></data>
+  <data name="GroupMembers" xml:space="preserve"><value>Spelers (minstens twee)</value></data>
+  <data name="ConfirmDeleteGroup" xml:space="preserve"><value>Groep {0} verwijderen?</value></data>
+  <data name="Edit" xml:space="preserve"><value>Bewerken</value></data>
+</root>

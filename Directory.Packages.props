@@ -28,6 +28,9 @@
     <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.14" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.18.3" />
   </ItemGroup>
+  <ItemGroup Label="Mobile">
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.120" />
+  </ItemGroup>
   <ItemGroup Label="Providers / players">
     <PackageVersion Include="Sharpcaster" Version="3.0.0" />
     <PackageVersion Include="TagLibSharp" Version="2.3.0" />

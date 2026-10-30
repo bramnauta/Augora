@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The part of the native apps (Android phone/tablet/TV and iOS) that is not platform specific:
+       talking to the server and the player protocol. Each platform only supplies the audio backend. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Augora.Contracts\Augora.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+  </ItemGroup>
+
+</Project>

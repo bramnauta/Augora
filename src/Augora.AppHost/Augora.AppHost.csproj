@@ -1,0 +1,15 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.4">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>0a99b71e-fcdf-4cc8-824f-03e173ac9693</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Augora.Server\Augora.Server.csproj" />
+    <!-- Library only: finds the Cast devices on the host for the container profile. -->
+    <ProjectReference Include="..\Augora.Players.GoogleCast\Augora.Players.GoogleCast.csproj" IsAspireProjectResource="false" />
+  </ItemGroup>
+
+</Project>

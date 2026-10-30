@@ -1,0 +1,164 @@
+@page "/podcasts"
+@inject ApiClient Api
+@inject NavigationManager Navigation
+@inject NotificationService Notifications
+@inject DialogService Dialogs
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@L["Nav_Podcasts"] · Augora</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">@L["Nav_Podcasts"]</RadzenText>
+
+<RadzenStack Gap="1.5rem" Style="max-width: 50rem;">
+    <RadzenCard Variant="Variant.Filled">
+        <RadzenText TextStyle="TextStyle.H6">@L["PodcastSubscriptions"]</RadzenText>
+        @if (_subscriptions is null)
+        {
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+        }
+        else if (_subscriptions.Count == 0)
+        {
+            <RadzenText TextStyle="TextStyle.Body2"><em>@L["NoPodcasts"]</em></RadzenText>
+        }
+        else
+        {
+            <RadzenStack Gap="0.25rem">
+                @foreach (var podcast in _subscriptions)
+                {
+                    <RadzenStack @key="podcast.Id" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" class="media-row"
+                                 @onclick="@(() => Open(podcast.Uri))">
+                        <MediaImage Url="@podcast.ImageUrl" Icon="podcasts" />
+                        <RadzenStack Gap="0" class="ellipsis" Style="flex: 1;">
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0 ellipsis">@podcast.Title</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 ellipsis">@podcast.Author</RadzenText>
+                        </RadzenStack>
+                        <RadzenButton Icon="delete" Variant="Variant.Text" ButtonStyle="ButtonStyle.Base" title="@L["Unsubscribe"]"
+                                      Click="@(() => UnsubscribeAsync(podcast))" @onclick:stopPropagation="true" />
+                    </RadzenStack>
+                }
+            </RadzenStack>
+        }
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Filled">
+        <RadzenText TextStyle="TextStyle.H6">@L["PodcastFind"]</RadzenText>
+        <RadzenTemplateForm TItem="object" Data="@this" Submit="@(_ => SearchAsync())">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.End" Wrap="FlexWrap.Wrap">
+                <RadzenFormField Text="@L["PodcastSearchOrUrl"]" Style="flex: 1; min-width: 16rem;">
+                    <RadzenTextBox @bind-Value="_query" />
+                </RadzenFormField>
+                <RadzenButton ButtonType="ButtonType.Submit" Icon="search" Text="@L["Nav_Search"]" Disabled="@(string.IsNullOrWhiteSpace(_query) || _busy)" />
+            </RadzenStack>
+        </RadzenTemplateForm>
+
+        @if (_results is { Count: > 0 })
+        {
+            <RadzenStack Gap="0.25rem" class="rz-mt-4">
+                @foreach (var result in _results)
+                {
+                    <RadzenStack @key="result.FeedUrl" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" class="media-row"
+                                 @onclick="@(() => Open(result.Uri))">
+                        <MediaImage Url="@result.ImageUrl" Icon="podcasts" />
+                        <RadzenStack Gap="0" class="ellipsis" Style="flex: 1;">
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0 ellipsis">@result.Title</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 ellipsis">@result.Author</RadzenText>
+                        </RadzenStack>
+                        @if (_subscriptions?.Any(s => s.FeedUrl == result.FeedUrl) == true)
+                        {
+                            <RadzenIcon Icon="check" title="@L["Subscribed"]" />
+                        }
+                        else
+                        {
+                            <RadzenButton Icon="add" Text="@L["Subscribe"]" Variant="Variant.Text" Disabled="_busy"
+                                          Click="@(() => SubscribeAsync(result.FeedUrl))" @onclick:stopPropagation="true" />
+                        }
+                    </RadzenStack>
+                }
+            </RadzenStack>
+        }
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private List<PodcastSubscriptionDto>? _subscriptions;
+    private List<PodcastSearchResultDto>? _results;
+    private string _query = "";
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _subscriptions = await Api.GetPodcastsAsync();
+        }
+        catch (ApiException ex)
+        {
+            _subscriptions = [];
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+
+    private void Open(string uri) => Navigation.NavigateTo($"browse?uri={Uri.EscapeDataString(uri)}");
+
+    private async Task SearchAsync()
+    {
+        var query = _query.Trim();
+        // A feed url subscribes directly; anything else searches the directory.
+        if (Uri.TryCreate(query, UriKind.Absolute, out var url) && url.Scheme is "http" or "https")
+        {
+            await SubscribeAsync(query);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _results = await Api.SearchPodcastDirectoryAsync(query);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SubscribeAsync(string feedUrl)
+    {
+        _busy = true;
+        try
+        {
+            var subscription = await Api.SubscribePodcastAsync(feedUrl);
+            _subscriptions = [.. (_subscriptions ?? []).Where(s => s.Id != subscription.Id), subscription];
+            Notifications.Notify(NotificationSeverity.Success, L["Subscribed"], subscription.Title, duration: 2500);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task UnsubscribeAsync(PodcastSubscriptionDto podcast)
+    {
+        if (await Dialogs.Confirm(L["ConfirmUnsubscribe", podcast.Title], L["Unsubscribe"]) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.UnsubscribePodcastAsync(podcast.Id);
+            _subscriptions = _subscriptions?.Where(s => s.Id != podcast.Id).ToList();
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+    }
+}

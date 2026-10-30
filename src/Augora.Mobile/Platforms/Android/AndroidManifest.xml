@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- The permissions (internet, foreground service, notifications) come from Augora.AndroidPlayer. -->
+  <!-- Augora usually runs on the LAN over plain http. -->
+  <application
+      android:allowBackup="false"
+      android:icon="@mipmap/appicon"
+      android:roundIcon="@mipmap/appicon_round"
+      android:supportsRtl="true"
+      android:usesCleartextTraffic="true">
+  </application>
+</manifest>

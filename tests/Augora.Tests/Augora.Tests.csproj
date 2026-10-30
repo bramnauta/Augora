@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Augora.Core\Augora.Core.csproj" />
+    <ProjectReference Include="..\..\src\Augora.Providers.TuneIn\Augora.Providers.TuneIn.csproj" />
+    <ProjectReference Include="..\..\src\Augora.Players.GoogleCast\Augora.Players.GoogleCast.csproj" />
+    <ProjectReference Include="..\..\src\Augora.Players.Remote\Augora.Players.Remote.csproj" />
+    <ProjectReference Include="..\..\src\Augora.Server\Augora.Server.csproj" />
+    <ProjectReference Include="..\..\src\Augora.Providers.Spotify\Augora.Providers.Spotify.csproj" />
+    <ProjectReference Include="..\..\src\Augora.Providers.LocalFiles\Augora.Providers.LocalFiles.csproj" />
+    <ProjectReference Include="..\..\src\Augora.Providers.Podcasts\Augora.Providers.Podcasts.csproj" />
+    <ProjectReference Include="..\..\src\Augora.Players.Groups\Augora.Players.Groups.csproj" />
+  </ItemGroup>
+
+</Project>

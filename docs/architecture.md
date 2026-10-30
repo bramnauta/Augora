@@ -1,6 +1,6 @@
-# AudioCentral – Architectuur
+# Augora – Architectuur
 
-AudioCentral is een self-hosted muziekserver: één plek die
+Augora is een self-hosted muziekserver: één plek die
 muziekbronnen (Spotify, TuneIn, lokale bestanden, podcasts, Nextory) koppelt aan spelers
 (Google Cast, browser, Android) en die via een eigen API aanstuurbaar is (Blazor UI, Android-app,
 Home Assistant).
@@ -24,30 +24,33 @@ Home Assistant).
 
 ```
 src/
-  AudioCentral.AppHost            Aspire AppHost (alleen development)
-  AudioCentral.ServiceDefaults    OpenTelemetry, health checks, resilience
-  AudioCentral.Contracts          DTO's + API-contract; gedeeld met Web, later Android/HA
-  AudioCentral.Core               Domeinmodel, abstracties, PlayerManager, QueueManager, streaming
-  AudioCentral.Providers.TuneIn   Muziekbron: TuneIn (OPML-API)
-  AudioCentral.Providers.Spotify  Muziekbron: Spotify (Web API + go-librespot, account-pool)
-  AudioCentral.Providers.LocalFiles Muziekbron: lokale mappen / NAS (TagLibSharp-index)
-  AudioCentral.Providers.Podcasts Muziekbron: podcasts via RSS, zoeken via iTunes
-  AudioCentral.Players.Remote     Spelers die zich via de hub aanmelden (browser, Android)
-  AudioCentral.Players.Groups     Eigen sync-groepen over speler-types heen
-  AudioCentral.Players.GoogleCast Spelerbron: Google Cast (mDNS + Cast v2-protocol)
-  AudioCentral.Server             ASP.NET Core host: REST-API, SignalR-hub, stream-endpoints,
+  Augora.AppHost            Aspire AppHost (alleen development)
+  Augora.ServiceDefaults    OpenTelemetry, health checks, resilience
+  Augora.Contracts          DTO's + API-contract; gedeeld met Web, later Android/HA
+  Augora.Core               Domeinmodel, abstracties, PlayerManager, QueueManager, streaming
+  Augora.Providers.TuneIn   Muziekbron: TuneIn (OPML-API)
+  Augora.Providers.Spotify  Muziekbron: Spotify (Web API + go-librespot, account-pool)
+  Augora.Providers.LocalFiles Muziekbron: lokale mappen / NAS (TagLibSharp-index)
+  Augora.Providers.Podcasts Muziekbron: podcasts via RSS, zoeken via iTunes
+  Augora.Players.Remote     Spelers die zich via de hub aanmelden (browser, Android)
+  Augora.Players.Groups     Eigen sync-groepen over speler-types heen
+  Augora.Players.GoogleCast Spelerbron: Google Cast (mDNS + Cast v2-protocol)
+  Augora.Server             ASP.NET Core host: REST-API, SignalR-hub, stream-endpoints,
                                   persistence, auth, host van de WASM-app
-  AudioCentral.Web                Blazor WebAssembly UI
-  AudioCentral.Android            Android-app (WebView-UI + native speler), telefoon en TV
+  Augora.Web                Blazor WebAssembly UI
+  Augora.Client             Gedeeld deel van de apps: serverclient, tokens, speler-protocol (PlayerController)
+  Augora.AndroidPlayer      Native Android-speler (foreground service, MediaPlayer, MediaSession), gedeeld door Mobile en AndroidTv
+  Augora.Mobile             .NET MAUI-app voor telefoon en tablet (Android + iOS): WebView-UI + native speler
+  Augora.AndroidTv          Android TV-app (WebView-UI + native speler)
 integrations/
-  homeassistant/custom_components/audiocentral   Home Assistant-integratie (Python)
+  homeassistant/custom_components/augora   Home Assistant-integratie (Python)
 tests/
-  AudioCentral.Tests              xUnit v3
+  Augora.Tests              xUnit v3
 docs/
 ```
 
-Nieuwe bronnen en spelers komen als losse projecten (`AudioCentral.Providers.Spotify`,
-`AudioCentral.Players.Browser`, ...) die zich via een `Add...()`-extensie registreren.
+Nieuwe bronnen en spelers komen als losse projecten (`Augora.Providers.Spotify`,
+`Augora.Players.Browser`, ...) die zich via een `Add...()`-extensie registreren.
 
 ## Kernbegrippen
 
@@ -71,7 +74,7 @@ account-onafhankelijk; alleen mappen bevatten het account (`spotify:folder:{acco
 Een spelerbron ontdekt spelers (mDNS, handmatige configuratie, of spelers die zich via de hub
 aanmelden zoals browser en Android) en levert `IPlayer`-objecten:
 
-- `PlayAsync(PlayMedia)` – speel een stream-URL van AudioCentral af, met metadata.
+- `PlayAsync(PlayMedia)` – speel een stream-URL van Augora af, met metadata.
 - `PauseAsync`, `ResumeAsync`, `StopAsync`, `SetVolumeAsync`, `SetMutedAsync`, `SeekAsync`.
 - `State` + `StateChanged`-event (idle/buffering/playing/paused, volume, positie).
 - `Capabilities` (seek, volume, grouping, ...).
@@ -79,7 +82,7 @@ aanmelden zoals browser en Android) en levert `IPlayer`-objecten:
 Google Cast-groepen zijn voor ons gewoon spelers (Google synchroniseert zelf). Eigen sync-groepen
 over speler-types heen staan hieronder.
 
-### Sync-groepen (`AudioCentral.Players.Groups`)
+### Sync-groepen (`Augora.Players.Groups`)
 
 - Een groep (`group:{id}`, `PlayerKind.SyncGroup`) is een speler met leden van elk type behalve
   andere groepen; definities staan in SQLite. Elke gebruiker mag groepen beheren (`/api/groups`).
@@ -102,7 +105,7 @@ reageert op `StateChanged` (track klaar → volgende) en stuurt de speler aan. W
 in SQLite bewaard, zodat ze een herstart overleven.
 
 ### Streaming
-Spelers krijgen **altijd een URL van AudioCentral**, nooit direct de upstream-URL:
+Spelers krijgen **altijd een URL van Augora**, nooit direct de upstream-URL:
 
 ```
 speler ──HTTP GET──▶ /api/stream/{sessionId}  ──▶ StreamSession ──▶ StreamSource
@@ -145,7 +148,7 @@ Web API (metadata) ◀── SpotifyProvider ──▶ SpotifyAccountPool (accou
   hun nummers (`IMusicProvider.GetQueueItemsAsync`).
 - **Audio**: go-librespot (`--config_dir {DataDirectory}/spotify/{account}`) logt in met het access-token
   (`credentials.type: spotify_token`, scope `streaming`) en schrijft PCM naar een FIFO. Per nummer start
-  AudioCentral bij het HTTP-verzoek van de speler `POST /player/play`, leest de FIFO tot het
+  Augora bij het HTTP-verzoek van de speler `POST /player/play`, leest de FIFO tot het
   `not_playing`/`stopped`-event plus een korte stilte (of tot de verwachte lengte binnen is) en sluit dan de
   HTTP-stream, zodat de speler "klaar" meldt en de wachtrij doorgaat. De kanaalbuffer (±6 s) remt librespot af.
 - **Account-pool** (één stream per account):
@@ -170,7 +173,7 @@ seconden. Daarom krijgt een speler zolang de wachtrij Spotify-nummers bevat éé
 - `PlayMedia.Continuous` vertelt de speler dat de stream langer is dan het eerste item (geen duur naar
   Cast). Via `IContinuousStreamPlayer.AddSegment` leert de speler waar elk volgend item in de stream
   begint, en toont hij het item op zijn huidige positie (Cast, browser/Android, groepen).
-- Beperking: een speaker met scherm toont de metadata van het eerste nummer; AudioCentral, Home Assistant
+- Beperking: een speaker met scherm toont de metadata van het eerste nummer; Augora, Home Assistant
   en de Android-app tonen wel het juiste nummer.
 
 ## Lokale bestanden
@@ -206,7 +209,7 @@ seconden. Daarom krijgt een speler zolang de wachtrij Spotify-nummers bevat éé
 ### Remote players (browser, later Android)
 
 Spelers die zelf audio afspelen gebruiken één generiek protocol over de hub
-(`AudioCentral.Players.Remote`, contract in `Contracts/RemotePlayers.cs`):
+(`Augora.Players.Remote`, contract in `Contracts/RemotePlayers.cs`):
 
 | Richting | Methode | Inhoud |
 |---|---|---|
@@ -225,25 +228,37 @@ Spelers die zelf audio afspelen gebruiken één generiek protocol over de hub
   Session API. Browsers blokkeren automatisch afspelen zonder klik; de UI toont dan een knop
   "Afspelen toestaan". HLS-streams kan Chrome niet native afspelen.
 
-## Android-app
+## Apps (Android, Android TV, iOS)
 
-- `AudioCentral.Android` (.NET for Android, API 26+, telefoon en Android TV via de leanback-launcher).
-- `MainActivity` toont de web-UI in een WebView (user agent `AudioCentralAndroid/1.0`; de UI verbergt dan
-  de browser-speler). Inloggen gebeurt in de WebView, dus OIDC werkt zonder extra code.
-- Zodra de WebView een `AudioCentral.Auth`-cookie heeft, wisselt de app die via `POST /api/auth/token`
+Twee apps: `Augora.Mobile` (.NET MAUI, telefoon en tablet, Android 8+ en iOS 15+) en `Augora.AndroidTv`
+(.NET for Android, Android TV via de leanback-launcher). Android TV heeft een eigen app omdat MAUI daar
+niet op mikt en de bediening met een afstandsbediening een andere UI vraagt.
+
+- Beide tonen de web-UI in een WebView (user agent `AugoraAndroid/1.0` of `AugoraIos/1.0`; de UI verbergt
+  dan de browser-speler). Inloggen gebeurt in de WebView, dus OIDC werkt zonder extra code.
+- Zodra de WebView een `Augora.Auth`-cookie heeft, wisselt de app die via `POST /api/auth/token`
   in voor een access- en refresh-token (alleen met de cookie toegestaan, niet met een bearer-token).
-- `PlayerService` (foreground service, `mediaPlayback`) gebruikt hetzelfde remote-player-protocol als de
-  browser: `RegisterPlayer` met een vaste device-id en soort `Phone` of `Tv`, commando's uitvoeren met
-  `MediaPlayer`, state elke 5 s rapporteren. Audio focus, wake- en wifi-lock houden het afspelen gaande.
-- Notificatie, MediaSession (koptelefoon, Bluetooth, TV-afstandsbediening) en verlies van audio focus
-  sturen REST-commando's naar de server, zodat wachtrij en UI's het volgen.
+- `Augora.Client` bevat wat niet platformspecifiek is: `ServerClient` (tokens), `AppSettings` en
+  `PlayerController`. Die gebruikt hetzelfde remote-player-protocol als de browser: `RegisterPlayer` met
+  een vaste device-id en soort `Phone` of `Tv`, commando's uitvoeren, state elke 5 s rapporteren. Het
+  platform levert alleen een `IPlayerBackend`: laden, afspelen, pauzeren, zoeken, volume en de
+  lock-screen/notificatie.
+- Android (`Augora.AndroidPlayer`): `PlayerService` (foreground service, `mediaPlayback`) met
+  `MediaPlayer`; audio focus, wake- en wifi-lock houden het afspelen gaande. Notificatie, MediaSession
+  (koptelefoon, Bluetooth, TV-afstandsbediening) en verlies van audio focus sturen REST-commando's naar
+  de server, zodat wachtrij en UI's het volgen.
+- iOS (`IosPlayerBackend` in `Augora.Mobile`): `AVPlayer`, `MPRemoteCommandCenter` en
+  `MPNowPlayingInfoCenter` voor het vergrendelscherm, en `UIBackgroundModes: audio`. Er is geen service:
+  de controller leeft in de app, dus een stilstaande app die iOS onderbreekt is niet als speler te bereiken.
+- De iOS-code compileert op Windows (`-p:BuildIos=true`) maar is nog niet op een toestel getest; bouwen,
+  signeren en installeren vergt een Mac.
 
 ## Home Assistant-integratie
 
-- Custom component `integrations/homeassistant/custom_components/audiocentral` (config flow met URL +
+- Custom component `integrations/homeassistant/custom_components/augora` (config flow met URL +
   API-token, reauth bij een ingetrokken token).
-- `media_player` per AudioCentral-speler; features volgen `PlayerFeatures`. Media browsing gebruikt
-  `/api/browse`, `play_media` neemt AudioCentral-URI's met `enqueue` → `QueueOption`.
+- `media_player` per Augora-speler; features volgen `PlayerFeatures`. Media browsing gebruikt
+  `/api/browse`, `play_media` neemt Augora-URI's met `enqueue` → `QueueOption`.
 - Realtime: de integratie verbindt rechtstreeks met de hub via WebSocket (SignalR JSON-protocol, zonder
   negotiate), met het API-token in de header; na elke (her)verbinding haalt hij de spelers opnieuw op.
 
@@ -275,7 +290,7 @@ niet te raden token werkt, en `/api/auth/status|setup|login|refresh`).
   (`proxy`) voor een reverse proxy op dezelfde host. Met twee netwerken is `StreamBaseUrl` vast op het
   macvlan-adres gezet. In een bridge-netwerk zonder `StreamBaseUrl` logt de server een waarschuwing.
 - Home Assistant-app: later, als één container met `host_network: true` in `config.yaml`: mDNS en het stream-adres werken dan zonder macvlan. go-librespot zit altijd in dezelfde
-  container als AudioCentral; de audio loopt via een FIFO, dus een losse librespot-container kan niet.
+  container als Augora; de audio loopt via een FIFO, dus een losse librespot-container kan niet.
 
 ## Roadmap
 

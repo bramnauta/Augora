@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "audiocentral",
+      "name": "augora",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "src/AudioCentral.Server", "--launch-profile", "http", "--urls", "http://0.0.0.0:5081"],
+      "runtimeArgs": ["run", "--project", "src/Augora.Server", "--launch-profile", "http", "--urls", "http://0.0.0.0:5081"],
       "port": 5081
     }
   ]

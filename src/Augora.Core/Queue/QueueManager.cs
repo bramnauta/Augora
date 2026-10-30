@@ -16,9 +16,13 @@ namespace Augora.Core.Queue;
 public sealed class QueueManager
 {
     private const int MaxFollowing = 500;
+    private static readonly TimeSpan MaxAnnouncement = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan MinResumeSeek = TimeSpan.FromSeconds(2);
 
     private readonly ConcurrentDictionary<string, PlayerQueue> _queues = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _announceLocks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _announcing = new(StringComparer.OrdinalIgnoreCase);
     private readonly PlayerManager _players;
     private readonly LibraryService _library;
     private readonly StreamResolver _resolver;
@@ -179,6 +183,150 @@ public sealed class QueueManager
             return queue.ToDto();
         }, persist: false, cancellationToken);
 
+    /// <summary>
+    /// Plays <see cref="AnnounceRequest.Url"/> on the player (or group) and returns when it has ended. The queue is left alone:
+    /// afterwards the volume goes back and, when asked and the player was playing a queue item, that item continues where it was.
+    /// </summary>
+    public async Task AnnounceAsync(string playerId, AnnounceRequest request, CancellationToken cancellationToken)
+    {
+        var player = _players.GetAvailable(playerId);
+        if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var url) || url.Scheme is not ("http" or "https"))
+        {
+            throw new AugoraException(ErrorCodes.ItemNotPlayable, "The announcement must be an absolute http(s) url.", 400);
+        }
+
+        if (request.Volume is { } requested && (!double.IsFinite(requested) || requested is < 0 or > 1))
+        {
+            throw new AugoraException(ErrorCodes.ItemNotPlayable, "The volume must be between 0 and 1.", 400);
+        }
+
+        if (_membership.GetGroup(player.Id) is { } group)
+        {
+            throw new AugoraException(ErrorCodes.PlayerUnavailable, $"'{player.Name}' plays as a member of a group; announce on the group ({group}).", 409);
+        }
+
+        // One announcement at a time per player; the next one waits for this one to finish.
+        var gate = _announceLocks.GetOrAdd(player.Id, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(cancellationToken);
+        _announcing[player.Id] = 0;
+        try
+        {
+            ResumePoint? resume = null;
+            if (request.Resume)
+            {
+                await WithQueueAsync(player.Id, (queue, _) =>
+                {
+                    resume = ResumePointOf(player, queue);
+                    return Task.FromResult(queue.ToDto());
+                }, persist: false, cancellationToken);
+            }
+
+            var volume = request.Volume is not null && player.Features.HasFlag(PlayerFeatures.Volume) ? player.Status.Volume : (double?)null;
+            try
+            {
+                if (volume is not null)
+                {
+                    await player.SetVolumeAsync(request.Volume!.Value, cancellationToken);
+                }
+
+                await PlayAnnouncementAsync(player, url, request.ContentType ?? "audio/mpeg", cancellationToken);
+            }
+            finally
+            {
+                if (volume is { } original)
+                {
+                    await RestoreAsync(() => player.SetVolumeAsync(original, CancellationToken.None), player, "volume");
+                }
+            }
+
+            if (resume is { } point)
+            {
+                await RestoreAsync(() => ResumeAfterAnnouncementAsync(player, point), player, "playback");
+            }
+        }
+        finally
+        {
+            _announcing.TryRemove(player.Id, out _);
+            gate.Release();
+        }
+    }
+
+    private async Task PlayAnnouncementAsync(IPlayer player, Uri url, string contentType, CancellationToken cancellationToken)
+    {
+        // A group reads the source of its own session, also for a stream the members fetch themselves.
+        _sessions.Create(player.Id, new ResolvedStream(url, contentType, false, Direct: true));
+        var media = new PlayMedia(url, url.ToString(), contentType, false, "augora:announcement", "Announcement", null, null, null);
+
+        var ended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnEnded(object? sender, PlaybackEndedEventArgs e) => ended.TrySetResult();
+        player.PlaybackEnded += OnEnded;
+        try
+        {
+            _logger.LogInformation("Announcing {Url} on {Player}", url, player.Name);
+            await player.PlayAsync(media, cancellationToken);
+            await ended.Task.WaitAsync(MaxAnnouncement, cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("The announcement on {Player} did not end within {Limit}; stopping it", player.Name, MaxAnnouncement);
+            await player.StopAsync(CancellationToken.None);
+        }
+        finally
+        {
+            player.PlaybackEnded -= OnEnded;
+        }
+    }
+
+    /// <summary>What the player plays from its queue right now, or null when there is nothing to continue (idle, paused, another app).</summary>
+    private ResumePoint? ResumePointOf(IPlayer player, PlayerQueue queue)
+    {
+        var status = player.Status;
+        if (status.State is not (PlaybackState.Playing or PlaybackState.Buffering) || status.ExternalSource is not null
+            || status.NowPlaying is not { } nowPlaying || queue.CurrentIndex is not { } current)
+        {
+            return null;
+        }
+
+        // Flow mode makes the next item current just before the audio gets there: continue with the item that is heard.
+        var index = Enumerable.Range(0, current + 1).Reverse().Where(i => queue.Items[i].Item.Ref.ToString() == nowPlaying.ItemUri).Cast<int?>().FirstOrDefault() ?? current;
+        return new ResumePoint(queue.Items[index].Id, nowPlaying.IsLive ? null : nowPlaying.Position, _sessions.GetForPlayer(player.Id)?.Stream);
+    }
+
+    private Task<QueueDto> ResumeAfterAnnouncementAsync(IPlayer player, ResumePoint point) =>
+        WithQueueAsync(player.Id, async (queue, ct) =>
+        {
+            // The queue may have been changed while the announcement played: then the user has moved on.
+            var index = queue.Items.ToList().FindIndex(i => i.Id == point.QueueItemId);
+            if (index < 0 || queue.CurrentIndex != index)
+            {
+                return queue.ToDto();
+            }
+
+            // Streams that cannot seek themselves (Spotify in flow mode) restart at the position; the others are sought afterwards.
+            var restartsAt = point.Stream is ProducedStreamSource { IsSeekable: false } && point.Position is { } at ? at : TimeSpan.Zero;
+            await PlayIndexAsync(player, queue, index, ct, startPosition: restartsAt);
+            if (restartsAt == TimeSpan.Zero && point.Position is { } position && position > MinResumeSeek && player.Features.HasFlag(PlayerFeatures.Seek))
+            {
+                await player.SeekAsync(position, ct);
+            }
+
+            return queue.ToDto();
+        }, persist: false, CancellationToken.None);
+
+    private async Task RestoreAsync(Func<Task> restore, IPlayer player, string what)
+    {
+        try
+        {
+            await restore();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Restoring the {What} of {Player} after the announcement failed", what, player.Name);
+        }
+    }
+
+    private sealed record ResumePoint(string QueueItemId, TimeSpan? Position, StreamSource? Stream);
+
     public Task<QueueDto> NextAsync(string playerId, CancellationToken cancellationToken) =>
         MoveAsync(playerId, q => q.GetNextIndex(), cancellationToken);
 
@@ -336,6 +484,12 @@ public sealed class QueueManager
 
     private async void OnPlaybackEnded(object? sender, (IPlayer Player, PlaybackEndReason Reason) e)
     {
+        if (_announcing.ContainsKey(e.Player.Id))
+        {
+            // The announcement ended, or the music it interrupted did: AnnounceAsync decides what continues.
+            return;
+        }
+
         if (_membership.GetGroup(e.Player.Id) is not null)
         {
             // The group's queue advances; the member's own queue stays where it was.

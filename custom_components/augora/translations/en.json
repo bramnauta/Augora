@@ -33,5 +33,25 @@
       "already_configured": "This Augora server is already configured.",
       "reauth_successful": "The API token was updated."
     }
+  },
+  "services": {
+    "announce": {
+      "name": "Announce",
+      "description": "Plays an announcement (such as text-to-speech) on speakers or groups and then continues the music. Returns when the announcement has ended.",
+      "fields": {
+        "media_id": {
+          "name": "Media",
+          "description": "A media source (such as a text-to-speech message) or the url of an audio file."
+        },
+        "volume_level": {
+          "name": "Volume",
+          "description": "Fixed volume for the announcement. The speaker returns to its own volume afterwards. Leave empty to keep the current volume."
+        },
+        "resume": {
+          "name": "Resume",
+          "description": "Continue what was playing, from where it was interrupted, after the announcement."
+        }
+      }
+    }
   }
 }

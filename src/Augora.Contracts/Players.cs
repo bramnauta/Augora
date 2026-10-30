@@ -89,6 +89,12 @@ public enum RepeatMode
 /// </param>
 public sealed record PlayRequest(string Uri, QueueOption Option = QueueOption.Replace, string? TakeoverPlayerId = null, IReadOnlyList<string>? Following = null);
 
+/// <param name="Url">Absolute http(s) url of the audio to announce (e.g. a Home Assistant TTS file); the player fetches it itself.</param>
+/// <param name="Volume">Level (0-1) for the announcement; the player returns to its own level afterwards. Null leaves the volume alone.</param>
+/// <param name="Resume">Continue what the player was playing, from where it was interrupted, once the announcement is over.</param>
+/// <param name="ContentType">Defaults to <c>audio/mpeg</c>.</param>
+public sealed record AnnounceRequest(string Url, double? Volume = null, bool Resume = true, string? ContentType = null);
+
 public sealed record VolumeRequest(double Level);
 
 public sealed record MuteRequest(bool Muted);

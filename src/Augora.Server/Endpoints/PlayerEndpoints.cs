@@ -40,6 +40,15 @@ internal static class PlayerEndpoints
             .WithDescription("Returns 409 spotify_no_free_account (with the holders) when every Spotify account is streaming; "
                 + "repeat the request with takeoverPlayerId to stop one of them.");
 
+        players.MapPost("/{id}/announce", async Task<NoContent> (string id, AnnounceRequest request, QueueManager queues, CancellationToken ct) =>
+            {
+                await queues.AnnounceAsync(id, request, ct);
+                return TypedResults.NoContent();
+            })
+            .WithSummary("Play an announcement (e.g. text-to-speech) and continue what was playing.")
+            .WithDescription("Returns when the announcement has finished. Works for groups too; announcing on a player that plays "
+                + "as a member of a group returns 409, announce on the group instead.");
+
         players.MapPost("/{id}/pause", (string id, PlayerManager manager, CancellationToken ct) => Command(manager.GetAvailable(id).PauseAsync(ct)));
         players.MapPost("/{id}/resume", (string id, QueueManager queues, CancellationToken ct) => queues.ResumeAsync(id, ct))
             .WithSummary("Resume when paused; restart the current queue item when idle.");

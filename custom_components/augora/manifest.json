@@ -3,6 +3,7 @@
   "name": "Augora",
   "codeowners": ["@bramnauta"],
   "config_flow": true,
+  "dependencies": ["media_source"],
   "documentation": "https://github.com/bramnauta/Augora",
   "integration_type": "hub",
   "iot_class": "local_push",

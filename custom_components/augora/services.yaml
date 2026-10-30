@@ -1,0 +1,25 @@
+announce:
+  target:
+    entity:
+      integration: augora
+      domain: media_player
+  fields:
+    media_id:
+      required: true
+      example: "media-source://tts/cloud?message=Dinner is ready"
+      selector:
+        text:
+    volume_level:
+      required: false
+      example: 0.6
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+          mode: slider
+    resume:
+      required: false
+      default: true
+      selector:
+        boolean:

@@ -33,5 +33,25 @@
       "already_configured": "Deze Augora-server is al ingesteld.",
       "reauth_successful": "Het API-token is bijgewerkt."
     }
+  },
+  "services": {
+    "announce": {
+      "name": "Omroepen",
+      "description": "Speelt een omroep (zoals tekst-naar-spraak) af op speakers of groepen en gaat daarna verder met de muziek. Geeft pas antwoord als de omroep klaar is.",
+      "fields": {
+        "media_id": {
+          "name": "Media",
+          "description": "Een mediabron (zoals een tekst-naar-spraakbericht) of de URL van een audiobestand."
+        },
+        "volume_level": {
+          "name": "Volume",
+          "description": "Vast volume voor de omroep. De speaker keert daarna terug naar het eigen volume. Leeg laten om het huidige volume te houden."
+        },
+        "resume": {
+          "name": "Hervatten",
+          "description": "Na de omroep verdergaan met wat speelde, vanaf het punt van onderbreking."
+        }
+      }
+    }
   }
 }

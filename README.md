@@ -160,6 +160,23 @@ data:
   enqueue: replace
 ```
 
+Omroepen (TTS) op speakers of groepen, waarna de muziek vanaf het onderbrekingspunt verdergaat en het
+volume terugkeert. Een omroep op een speaker die in een draaiende groep speelt wordt geweigerd; omroepen
+op de groep zelf. De actie geeft pas antwoord als de omroep klaar is:
+
+```yaml
+action: augora.announce
+target:
+  entity_id: [media_player.keuken, media_player.woonkamer_groep]
+data:
+  media_id: media-source://tts/cloud?message=Het eten is klaar
+  volume_level: 0.6   # optioneel: vast volume voor de omroep
+  resume: true        # optioneel (standaard aan): muziek hervatten
+```
+
+`tts.speak` en Assist-omroepen werken ook (de spelers ondersteunen `announce`); het volume geef je dan
+mee via `extra: {volume_level: 0.6}` bij `media_player.play_media`. REST: `POST /api/players/{id}/announce`.
+
 Updates komen realtime binnen via de SignalR-hub. Zijn alle Spotify-accounts bezet, dan geeft de actie
 een fout met wie ze gebruiken.
 

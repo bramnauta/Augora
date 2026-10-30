@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
+import voluptuous as vol
+
+from homeassistant.components import media_source
 from homeassistant.components.media_player import (
     BrowseError,
     BrowseMedia,
@@ -16,8 +19,10 @@ from homeassistant.components.media_player import (
     MediaType,
     RepeatMode,
 )
+from homeassistant.components.media_player.browse_media import async_process_play_media_url
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -25,7 +30,17 @@ from homeassistant.util import dt as dt_util
 
 from . import AugoraConfigEntry, AugoraHub
 from .api import AugoraError
-from .const import DOMAIN, ERROR_NO_FREE_SPOTIFY_ACCOUNT, SIGNAL_NEW_PLAYER, SIGNAL_PLAYER_UPDATED, SIGNAL_QUEUE_UPDATED
+from .const import (
+    ATTR_MEDIA_ID,
+    ATTR_RESUME,
+    ATTR_VOLUME_LEVEL,
+    DOMAIN,
+    ERROR_NO_FREE_SPOTIFY_ACCOUNT,
+    SERVICE_ANNOUNCE,
+    SIGNAL_NEW_PLAYER,
+    SIGNAL_PLAYER_UPDATED,
+    SIGNAL_QUEUE_UPDATED,
+)
 
 STATES = {
     "Idle": MediaPlayerState.IDLE,
@@ -66,6 +81,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: AugoraConfigEntry, async
         async_add_entities([AugoraMediaPlayer(hub, player_id)])
 
     entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_PLAYER.format(entry.entry_id), add_player))
+
+    entity_platform.async_get_current_platform().async_register_entity_service(
+        SERVICE_ANNOUNCE,
+        {
+            vol.Required(ATTR_MEDIA_ID): cv.string,
+            vol.Optional(ATTR_VOLUME_LEVEL): vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
+            vol.Optional(ATTR_RESUME, default=True): cv.boolean,
+        },
+        "async_announce",
+    )
 
 
 class AugoraMediaPlayer(MediaPlayerEntity):
@@ -126,6 +151,7 @@ class AugoraMediaPlayer(MediaPlayerEntity):
             | MediaPlayerEntityFeature.MEDIA_ENQUEUE
             | MediaPlayerEntityFeature.SHUFFLE_SET
             | MediaPlayerEntityFeature.REPEAT_SET
+            | MediaPlayerEntityFeature.MEDIA_ANNOUNCE
         )
         player_features = self._player.get("features") or ""
         if "Pause" in player_features:
@@ -225,9 +251,32 @@ class AugoraMediaPlayer(MediaPlayerEntity):
         await self._call(self._hub.client.set_repeat(self._player_id, REPEAT_FROM_HA[repeat]))
 
     async def async_play_media(self, media_type: str, media_id: str, enqueue: MediaPlayerEnqueue | None = None, **kwargs: Any) -> None:
-        """media_id is an Augora uri, e.g. tunein:radio:s24939 or spotify:playlist:..."""
+        """media_id is an Augora uri, e.g. tunein:radio:s24939 or spotify:playlist:...
+
+        With announce (tts.speak, assist) it is an announcement instead: a media source or url that plays once, after which
+        the music continues. extra.volume sets a fixed volume for it.
+        """
+        if kwargs.get("announce"):
+            volume = (kwargs.get("extra") or {}).get(ATTR_VOLUME_LEVEL)
+            await self.async_announce(media_id, float(volume) if volume is not None else None)
+            return
+
         option = ENQUEUE.get(enqueue, "Replace") if enqueue else "Replace"
         await self._call(self._hub.client.play(self._player_id, media_id, option))
+
+    async def async_announce(self, media_id: str, volume_level: float | None = None, resume: bool = True) -> None:
+        """Entity service augora.announce: plays media_id (url or media source, e.g. TTS) and returns when it has ended."""
+        content_type = None
+        if media_source.is_media_source_id(media_id):
+            try:
+                sourced = await media_source.async_resolve_media(self.hass, media_id, self.entity_id)
+            except media_source.MediaSourceError as err:
+                raise HomeAssistantError(f"Cannot resolve {media_id}: {err}") from err
+            media_id, content_type = sourced.url, sourced.mime_type
+
+        # Speakers fetch the file themselves: it needs the address of Home Assistant (and a signature) they can reach.
+        url = async_process_play_media_url(self.hass, media_id)
+        await self._call(self._hub.client.announce(self._player_id, url, volume_level, resume, content_type))
 
     async def async_browse_media(self, media_content_type: str | None = None, media_content_id: str | None = None) -> BrowseMedia:
         try:

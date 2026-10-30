@@ -10,4 +10,9 @@ SIGNAL_PLAYER_UPDATED = "augora_player_updated_{}"
 SIGNAL_QUEUE_UPDATED = "augora_queue_updated_{}"
 SIGNAL_NEW_PLAYER = "augora_new_player_{}"
 
+SERVICE_ANNOUNCE = "announce"
+ATTR_MEDIA_ID = "media_id"
+ATTR_VOLUME_LEVEL = "volume_level"
+ATTR_RESUME = "resume"
+
 ERROR_NO_FREE_SPOTIFY_ACCOUNT = "spotify_no_free_account"

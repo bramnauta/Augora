@@ -22,6 +22,9 @@ MESSAGE_PING = 6
 MESSAGE_CLOSE = 7
 PING_INTERVAL = 15
 RECONNECT_DELAY = 10
+REQUEST_TIMEOUT = 30
+# The server answers when the announcement has ended and gives up on it after three minutes.
+ANNOUNCE_TIMEOUT = 200
 
 
 class AugoraError(Exception):
@@ -69,6 +72,17 @@ class AugoraClient:
     async def play(self, player_id: str, uri: str, option: str = "Replace") -> dict[str, Any]:
         return await self._request("POST", f"/api/players/{quote(player_id, safe='')}/play", {"uri": uri, "option": option})
 
+    async def announce(
+        self, player_id: str, url: str, volume: float | None = None, resume: bool = True, content_type: str | None = None
+    ) -> None:
+        """Plays url on the player and returns when it has ended; the volume and the music are restored afterwards."""
+        body: dict[str, Any] = {"url": url, "resume": resume}
+        if volume is not None:
+            body["volume"] = volume
+        if content_type:
+            body["contentType"] = content_type
+        await self._request("POST", f"/api/players/{quote(player_id, safe='')}/announce", body, ANNOUNCE_TIMEOUT)
+
     async def command(self, player_id: str, command: str) -> None:
         """pause, resume, stop, next or previous."""
         await self._request("POST", f"/api/players/{quote(player_id, safe='')}/{command}")
@@ -89,10 +103,10 @@ class AugoraClient:
         """Off, One or All."""
         await self._request("PUT", f"/api/players/{quote(player_id, safe='')}/queue/repeat?mode={mode}")
 
-    async def _request(self, method: str, path: str, body: Any = None) -> Any:
+    async def _request(self, method: str, path: str, body: Any = None, timeout: int = REQUEST_TIMEOUT) -> Any:
         try:
             async with self._session.request(
-                method, f"{self.base_url}{path}", json=body, headers=self.headers, timeout=aiohttp.ClientTimeout(total=30)
+                method, f"{self.base_url}{path}", json=body, headers=self.headers, timeout=aiohttp.ClientTimeout(total=timeout)
             ) as response:
                 if response.status == 401:
                     raise AugoraAuthError("The API token was rejected", status=401)

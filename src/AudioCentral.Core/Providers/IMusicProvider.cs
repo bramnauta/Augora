@@ -9,7 +9,15 @@ namespace AudioCentral.Core.Providers;
 /// </summary>
 /// <param name="UserId">The AudioCentral user, <c>null</c> when the queue advances on its own and nobody is known.</param>
 /// <param name="Continuation">Flow mode: lets a producer continue with the next queue item in the same stream.</param>
-public sealed record PlaybackContext(string PlayerId, string? UserId = null, string? TakeoverPlayerId = null, IQueueContinuation? Continuation = null);
+/// <param name="StartPosition">
+/// Start this far into the item: a seek in a stream that cannot seek itself (flow mode). Only producers support it.
+/// </param>
+public sealed record PlaybackContext(
+    string PlayerId,
+    string? UserId = null,
+    string? TakeoverPlayerId = null,
+    IQueueContinuation? Continuation = null,
+    TimeSpan StartPosition = default);
 
 /// <summary>
 /// Flow mode: a producer whose item ended asks for the next queue item to play in the same stream, so there is no

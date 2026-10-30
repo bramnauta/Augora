@@ -7,7 +7,7 @@ public sealed class BroadcastStreamTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    internal static StreamRelay Relay() => new(new NoHttpClientFactory(), NullLogger<StreamRelay>.Instance);
+    internal static StreamRelay Relay() => new(new NoHttpClientFactory(), new StreamSessionManager(TimeProvider.System), NullLogger<StreamRelay>.Instance);
 
     [Fact]
     public async Task Every_reader_of_a_track_gets_all_of_it_and_the_source_is_read_once()

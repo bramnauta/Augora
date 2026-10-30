@@ -138,5 +138,7 @@ public sealed class GroupPlayerTests : IDisposable
         }
 
         public Task SetMutedAsync(bool muted, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task SeekAsync(TimeSpan position, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

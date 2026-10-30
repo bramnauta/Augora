@@ -38,6 +38,9 @@ public interface IPlayer
     Task SetVolumeAsync(double level, CancellationToken cancellationToken);
 
     Task SetMutedAsync(bool muted, CancellationToken cancellationToken);
+
+    /// <summary>Seeks in the stream that plays; only called for seekable streams (files, ranged HTTP, sized producers).</summary>
+    Task SeekAsync(TimeSpan position, CancellationToken cancellationToken);
 }
 
 public sealed record PlayerStatus(
@@ -63,6 +66,10 @@ public sealed record PlayerStatus(
 /// Flow mode: the stream may carry the following queue items too. Its length is unknown, and the player learns where
 /// each next item starts through <see cref="IContinuousStreamPlayer.AddSegment"/>.
 /// </param>
+/// <param name="StartPosition">
+/// The stream starts this far into the item (a seek in a stream that cannot seek itself restarts it there): players add
+/// it to the stream position they report.
+/// </param>
 public sealed record PlayMedia(
     Uri StreamUrl,
     string StreamPath,
@@ -74,7 +81,12 @@ public sealed record PlayMedia(
     string? ImageUrl,
     TimeSpan? Duration,
     string? ImagePath = null,
-    bool Continuous = false);
+    bool Continuous = false,
+    TimeSpan StartPosition = default)
+{
+    /// <summary>The position in the item at <paramref name="streamPosition"/> of a stream that plays only this item.</summary>
+    public TimeSpan ItemPosition(TimeSpan streamPosition) => streamPosition + StartPosition;
+}
 
 /// <summary>A player that can show the item playing at the current position of a continuous (flow mode) stream.</summary>
 public interface IContinuousStreamPlayer
@@ -117,7 +129,8 @@ public sealed class StreamSegments
                 if (_segments[i].Offset <= streamPosition || i == 0)
                 {
                     var position = streamPosition - _segments[i].Offset;
-                    return (_segments[i].Media, position < TimeSpan.Zero ? TimeSpan.Zero : position);
+                    var media = _segments[i].Media;
+                    return (media, media.ItemPosition(position < TimeSpan.Zero ? TimeSpan.Zero : position));
                 }
             }
 

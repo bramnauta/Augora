@@ -81,12 +81,13 @@ internal sealed class LibrespotDaemon : IAsyncDisposable
         _logger.LogInformation("go-librespot for Spotify account {Account} listens on port {Port}", _account.Id, _port);
     }
 
-    public async Task PlayAsync(string spotifyUri, CancellationToken cancellationToken)
+    /// <param name="position">Where in the track to start.</param>
+    public async Task PlayAsync(string spotifyUri, TimeSpan position, CancellationToken cancellationToken)
     {
         HttpResponseMessage response;
         try
         {
-            response = await _http.PostAsJsonAsync("player/play", new PlayBody(spotifyUri), LibrespotJsonContext.Default.PlayBody, cancellationToken);
+            response = await _http.PostAsJsonAsync("player/play", new PlayBody(spotifyUri, (long)position.TotalMilliseconds), LibrespotJsonContext.Default.PlayBody, cancellationToken);
         }
         catch (HttpRequestException ex) when (!IsRunning)
         {
@@ -361,7 +362,9 @@ internal sealed class LibrespotDaemon : IAsyncDisposable
     }
 }
 
-internal sealed record PlayBody([property: System.Text.Json.Serialization.JsonPropertyName("uri")] string Uri);
+internal sealed record PlayBody(
+    [property: System.Text.Json.Serialization.JsonPropertyName("uri")] string Uri,
+    [property: System.Text.Json.Serialization.JsonPropertyName("position")] long PositionMs);
 
 /// <summary>A pending device authorisation (<c>GET /auth/code</c>).</summary>
 internal sealed record DeviceAuthCode(

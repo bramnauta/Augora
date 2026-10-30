@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using AudioCentral.Contracts;
 using AudioCentral.Core.Events;
+using AudioCentral.Core.Streaming;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -13,12 +14,23 @@ public sealed class PlayerManager : IHostedService
 {
     private readonly ConcurrentDictionary<string, IPlayer> _players = new(StringComparer.OrdinalIgnoreCase);
     private readonly IEventPublisher _events;
+    private readonly StreamSessionManager _sessions;
     private readonly ILogger<PlayerManager> _logger;
 
-    public PlayerManager(IEnumerable<IPlayerProvider> providers, IEventPublisher events, ILogger<PlayerManager> logger)
+    public PlayerManager(IEnumerable<IPlayerProvider> providers, IEventPublisher events, StreamSessionManager sessions, ILogger<PlayerManager> logger)
     {
         _events = events;
+        _sessions = sessions;
         _logger = logger;
+
+        // A radio station announced another song: players do not know, so publish their status with it.
+        _sessions.StreamTitleChanged += (_, playerId) =>
+        {
+            if (_players.TryGetValue(playerId, out var player))
+            {
+                Publish(_events.PlayerUpdatedAsync(ToDto(player)));
+            }
+        };
 
         foreach (var provider in providers)
         {
@@ -49,6 +61,20 @@ public sealed class PlayerManager : IHostedService
             : throw new AudioCentralException(ErrorCodes.PlayerUnavailable, $"Player '{player.Name}' is not available.", 409);
     }
 
+    /// <summary>The player as clients see it, with what a radio station says it plays now.</summary>
+    public PlayerDto ToDto(IPlayer player)
+    {
+        var dto = player.ToDto();
+        if (dto.NowPlaying is { IsLive: true } nowPlaying && _sessions.GetForPlayer(player.Id)?.StreamTitle is { } streamTitle)
+        {
+            var (artist, title) = IcyMetadata.SplitTitle(streamTitle);
+            // The song as title; the artist (or else the station) below it.
+            dto = dto with { NowPlaying = nowPlaying with { Title = title, Subtitle = artist ?? nowPlaying.Title } };
+        }
+
+        return dto;
+    }
+
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -63,7 +89,7 @@ public sealed class PlayerManager : IHostedService
         _logger.LogInformation("Player {Name} ({Id}) added", player.Name, player.Id);
         player.StatusChanged += OnStatusChanged;
         player.PlaybackEnded += OnPlaybackEnded;
-        Publish(_events.PlayerUpdatedAsync(player.ToDto()));
+        Publish(_events.PlayerUpdatedAsync(ToDto(player)));
     }
 
     private void Remove(IPlayer player)
@@ -83,7 +109,7 @@ public sealed class PlayerManager : IHostedService
     {
         if (sender is IPlayer player)
         {
-            Publish(_events.PlayerUpdatedAsync(player.ToDto()));
+            Publish(_events.PlayerUpdatedAsync(ToDto(player)));
         }
     }
 

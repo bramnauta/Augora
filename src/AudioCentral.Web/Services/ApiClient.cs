@@ -101,6 +101,9 @@ public sealed class ApiClient(HttpClient http)
     public Task SetVolumeAsync(string playerId, double level) =>
         SendAsync(HttpMethod.Put, $"api/players/{Escape(playerId)}/volume", new VolumeRequest(level));
 
+    public Task<QueueDto> SeekAsync(string playerId, double positionSeconds) =>
+        SendAsync<QueueDto>(HttpMethod.Post, $"api/players/{Escape(playerId)}/seek", new SeekRequest(positionSeconds));
+
     public Task SetMutedAsync(string playerId, bool muted) =>
         SendAsync(HttpMethod.Put, $"api/players/{Escape(playerId)}/mute", new MuteRequest(muted));
 

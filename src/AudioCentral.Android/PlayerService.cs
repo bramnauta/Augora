@@ -196,6 +196,10 @@ public sealed class PlayerService : Service, AudioManager.IOnAudioFocusChangeLis
                 ApplyVolume();
                 _ = ReportAsync();
                 break;
+            case RemotePlayerCommandType.Seek when _player is not null && command.PositionSeconds is { } position:
+                _player.SeekTo((int)(Math.Max(0, position) * 1000));
+                _ = ReportAsync();
+                break;
         }
     }
 

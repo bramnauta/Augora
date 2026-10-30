@@ -134,6 +134,8 @@ class AudioCentralMediaPlayer(MediaPlayerEntity):
             features |= MediaPlayerEntityFeature.VOLUME_SET | MediaPlayerEntityFeature.VOLUME_STEP
         if "Mute" in player_features:
             features |= MediaPlayerEntityFeature.VOLUME_MUTE
+        if "Seek" in player_features and not (self._now_playing or {}).get("isLive"):
+            features |= MediaPlayerEntityFeature.SEEK
         return features
 
     @property
@@ -206,6 +208,9 @@ class AudioCentralMediaPlayer(MediaPlayerEntity):
 
     async def async_media_previous_track(self) -> None:
         await self._call(self._hub.client.command(self._player_id, "previous"))
+
+    async def async_media_seek(self, position: float) -> None:
+        await self._call(self._hub.client.seek(self._player_id, position))
 
     async def async_set_volume_level(self, volume: float) -> None:
         await self._call(self._hub.client.set_volume(self._player_id, volume))

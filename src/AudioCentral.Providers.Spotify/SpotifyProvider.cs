@@ -325,7 +325,21 @@ public sealed class SpotifyProvider : IMusicProvider
         var playerId = context.PlayerId;
         // Soloist streams continue with the following Spotify tracks of the queue (flow mode): no gap, no rebuffering.
         var flow = account.Engine == SpotifyEngine.Soloist && context.Continuation is not null;
-        return new ProducedStreamSource(LibrespotManager.ContentType, async (output, ct) =>
+
+        // go-librespot tracks of known length are seekable: the encoding has a constant bitrate, so a byte range is a
+        // time range and the track starts there.
+        long? length = !flow && duration is { } trackDuration && account.Engine != SpotifyEngine.Soloist
+            ? (long)(trackDuration.TotalSeconds * LibrespotManager.EncodedBytesPerSecond)
+            : null;
+
+        return new ProducedStreamSource(
+            LibrespotManager.ContentType,
+            (output, ct) => WriteAsync(output, context.StartPosition, ct),
+            Continuous: flow,
+            Length: length,
+            WriteFromAsync: (output, offset, ct) => WriteAsync(output, TimeSpan.FromSeconds(offset / (double)LibrespotManager.EncodedBytesPerSecond), ct));
+
+        async Task WriteAsync(Stream output, TimeSpan start, CancellationToken ct)
         {
             if (!_pool.StreamStarted(account.Id, playerId))
             {
@@ -336,7 +350,7 @@ public sealed class SpotifyProvider : IMusicProvider
             {
                 if (account.Engine == SpotifyEngine.Soloist)
                 {
-                    await RequireSoloist().StreamTracksAsync(account, new SoloistTrack(item.Id, duration), output, async (offset, token) =>
+                    await RequireSoloist().StreamTracksAsync(account, new SoloistTrack(item.Id, duration), start, output, async (offset, token) =>
                     {
                         if (context.Continuation is not { } continuation
                             || await continuation.ContinueAsync(i => i.Ref.Provider == Id && i.Type == MediaType.Track, offset, token) is not { } next)
@@ -350,14 +364,14 @@ public sealed class SpotifyProvider : IMusicProvider
                 else
                 {
                     var daemon = await _librespot.GetDaemonAsync(account, ct);
-                    await _librespot.StreamTrackAsync(daemon, item.Id, duration, output, ct);
+                    await _librespot.StreamTrackAsync(daemon, item.Id, duration, start, output, ct);
                 }
             }
             finally
             {
                 _pool.StreamEnded(account.Id, playerId);
             }
-        }, Continuous: flow);
+        }
     }
 
     private async Task<BrowseResult> BrowseFolderAsync(string folderId, CancellationToken cancellationToken)

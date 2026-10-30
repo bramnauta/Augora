@@ -208,6 +208,10 @@ internal sealed class GroupPlayer : IPlayer, IContinuousStreamPlayer, IDisposabl
     public Task SetMutedAsync(bool muted, CancellationToken cancellationToken) =>
         Task.WhenAll(Members.Where(m => m.Status.Available).Select(m => m.SetMutedAsync(muted, cancellationToken)));
 
+    /// <summary>Members play one live broadcast, which cannot seek (no <see cref="PlayerFeatures.Seek"/>).</summary>
+    public Task SeekAsync(TimeSpan position, CancellationToken cancellationToken) =>
+        throw new AudioCentralException(ErrorCodes.NotSeekable, $"'{Name}' cannot seek.", 409);
+
     public void Dispose()
     {
         _timer.Dispose();

@@ -79,6 +79,9 @@ class AudioCentralClient:
     async def set_muted(self, player_id: str, muted: bool) -> None:
         await self._request("PUT", f"/api/players/{quote(player_id, safe='')}/mute", {"muted": muted})
 
+    async def seek(self, player_id: str, position: float) -> None:
+        await self._request("POST", f"/api/players/{quote(player_id, safe='')}/seek", {"positionSeconds": position})
+
     async def set_shuffle(self, player_id: str, enabled: bool) -> None:
         await self._request("PUT", f"/api/players/{quote(player_id, safe='')}/queue/shuffle?enabled={str(enabled).lower()}")
 

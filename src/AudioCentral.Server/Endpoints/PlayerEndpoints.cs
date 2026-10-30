@@ -1,4 +1,5 @@
 using AudioCentral.Contracts;
+using AudioCentral.Core;
 using AudioCentral.Core.Players;
 using AudioCentral.Core.Queue;
 using AudioCentral.Players.Remote;
@@ -12,9 +13,9 @@ internal static class PlayerEndpoints
     {
         var players = app.MapGroup("/api/players").WithTags("Players");
 
-        players.MapGet("/", (PlayerManager manager) => manager.Players.Select(p => p.ToDto()).ToList());
+        players.MapGet("/", (PlayerManager manager) => manager.Players.Select(manager.ToDto).ToList());
 
-        players.MapGet("/{id}", (string id, PlayerManager manager) => manager.Get(id).ToDto());
+        players.MapGet("/{id}", (string id, PlayerManager manager) => manager.ToDto(manager.Get(id)));
 
         players.MapDelete("/{id}", Results<NoContent, NotFound, ProblemHttpResult> (string id, PlayerManager manager, RemotePlayerProvider remote) =>
             {
@@ -45,6 +46,14 @@ internal static class PlayerEndpoints
         players.MapPost("/{id}/stop", (string id, PlayerManager manager, CancellationToken ct) => Command(manager.GetAvailable(id).StopAsync(ct)));
         players.MapPost("/{id}/next", (string id, QueueManager queues, CancellationToken ct) => queues.NextAsync(id, ct));
         players.MapPost("/{id}/previous", (string id, QueueManager queues, CancellationToken ct) => queues.PreviousAsync(id, ct));
+
+        players.MapPost("/{id}/seek", (string id, SeekRequest request, QueueManager queues, CancellationToken ct) =>
+                double.IsFinite(request.PositionSeconds)
+                    ? queues.SeekAsync(id, TimeSpan.FromSeconds(request.PositionSeconds), ct)
+                    : throw new AudioCentralException(ErrorCodes.NotSeekable, "The position must be a number of seconds.", 400))
+            .WithSummary("Seek in the current item.")
+            .WithDescription("Returns 409 not_seekable for live streams and players that cannot seek. Streams that cannot seek "
+                + "themselves (Spotify in flow mode) restart at the position.");
 
         players.MapPut("/{id}/volume", (string id, VolumeRequest request, PlayerManager manager, CancellationToken ct) =>
             Command(manager.GetAvailable(id).SetVolumeAsync(request.Level, ct)));

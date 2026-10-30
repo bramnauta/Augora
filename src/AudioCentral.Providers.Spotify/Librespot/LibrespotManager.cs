@@ -30,6 +30,11 @@ internal sealed class LibrespotManager(
     /// <summary>Tracks are encoded as 320 kbps MP3: every Cast device and browser plays it, and it is transparent.</summary>
     public const string ContentType = "audio/mpeg";
 
+    /// <summary>
+    /// Constant 320 kbit/s without headers: a byte offset is a time offset, so players can seek with byte ranges.
+    /// </summary>
+    public const int EncodedBytesPerSecond = 320_000 / 8;
+
     public async Task<LibrespotDaemon> GetDaemonAsync(SpotifyAccount account, CancellationToken cancellationToken)
     {
         var gate = _locks.GetOrAdd(account.Id, _ => new SemaphoreSlim(1, 1));
@@ -122,9 +127,10 @@ internal sealed class LibrespotManager(
     }
 
     /// <summary>
-    /// Plays one track on the daemon and writes it, encoded, to <paramref name="output"/>. Returns when the track ended.
+    /// Plays one track on the daemon from <paramref name="start"/> and writes it, encoded, to <paramref name="output"/>.
+    /// Returns when the track ended.
     /// </summary>
-    public async Task StreamTrackAsync(LibrespotDaemon daemon, string trackId, TimeSpan? duration, Stream output, CancellationToken cancellationToken)
+    public async Task StreamTrackAsync(LibrespotDaemon daemon, string trackId, TimeSpan? duration, TimeSpan start, Stream output, CancellationToken cancellationToken)
     {
         var uri = $"spotify:track:{trackId}";
         var ended = new TaskCompletionSource<LibrespotEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -142,9 +148,9 @@ internal sealed class LibrespotManager(
         var copy = encoder.StandardOutput.BaseStream.CopyToAsync(output, cancellationToken);
         try
         {
-            await daemon.PlayAsync(uri, cancellationToken);
+            await daemon.PlayAsync(uri, start, cancellationToken);
             var input = encoder.StandardInput.BaseStream;
-            var expected = duration is { } d ? (long)(d.TotalSeconds * BytesPerSecond * 0.99) : long.MaxValue;
+            var expected = duration is { } d ? (long)((d - start).TotalSeconds * BytesPerSecond * 0.99) : long.MaxValue;
             long received = 0;
             while (true)
             {
@@ -245,7 +251,7 @@ internal sealed class LibrespotManager(
         [
             "-hide_banner", "-loglevel", "error",
             "-f", "s16le", "-ar", "44100", "-ac", "2", "-i", "pipe:0",
-            "-c:a", "libmp3lame", "-b:a", "320k", "-f", "mp3", "pipe:1",
+            "-c:a", "libmp3lame", "-b:a", "320k", "-id3v2_version", "0", "-write_xing", "0", "-f", "mp3", "pipe:1",
         ])
         {
             UseShellExecute = false,

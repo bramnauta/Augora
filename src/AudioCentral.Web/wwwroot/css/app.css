@@ -49,6 +49,28 @@ input, button, select, textarea {
     padding: 0.5rem 1rem;
 }
 
+.seek-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.seek-bar input[type="range"] {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--rz-primary);
+    cursor: pointer;
+}
+
+.seek-time {
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--rz-text-secondary-color);
+    min-width: 2.75rem;
+    text-align: center;
+}
+
 #blazor-error-ui {
     background: #b32121;
     color: white;

@@ -138,6 +138,47 @@ public sealed class QueueManager
             return queue.ToDto();
         }, persist: false, cancellationToken);
 
+    /// <summary>
+    /// Seeks in the current item. Players seek seekable streams themselves; a produced stream without a known length
+    /// (flow mode) is started again at <paramref name="position"/>.
+    /// </summary>
+    public Task<QueueDto> SeekAsync(string playerId, TimeSpan position, CancellationToken cancellationToken) =>
+        WithQueueAsync(playerId, async (queue, ct) =>
+        {
+            var player = _players.GetAvailable(playerId);
+            if (!player.Features.HasFlag(PlayerFeatures.Seek) || player.Status.NowPlaying is not { IsLive: false } nowPlaying)
+            {
+                throw new AudioCentralException(ErrorCodes.NotSeekable, $"'{player.Name}' cannot seek in what it plays.", 409);
+            }
+
+            if (position < TimeSpan.Zero)
+            {
+                position = TimeSpan.Zero;
+            }
+            else if (nowPlaying.Duration is { } duration && position > duration)
+            {
+                position = duration;
+            }
+
+            var stream = _sessions.GetForPlayer(player.Id)?.Stream;
+            if (stream is ProducedStreamSource { IsSeekable: false })
+            {
+                // Flow mode makes the next item current just before the audio gets there: seek in the item that is heard.
+                var index = queue.CurrentIndex is { } current
+                    ? Enumerable.Range(0, current + 1).Reverse().Where(i => queue.Items[i].Item.Ref.ToString() == nowPlaying.ItemUri).Cast<int?>().FirstOrDefault() ?? current
+                    : throw new AudioCentralException(ErrorCodes.NotSeekable, $"'{player.Name}' has no current queue item.", 409);
+
+                _logger.LogInformation("Seek on {Player}: restarting the stream at {Position}", player.Name, position);
+                await PlayIndexAsync(player, queue, index, ct, startPosition: position);
+            }
+            else
+            {
+                await player.SeekAsync(position, ct);
+            }
+
+            return queue.ToDto();
+        }, persist: false, cancellationToken);
+
     public Task<QueueDto> NextAsync(string playerId, CancellationToken cancellationToken) =>
         MoveAsync(playerId, q => q.GetNextIndex(), cancellationToken);
 
@@ -183,7 +224,13 @@ public sealed class QueueManager
             return queue.ToDto();
         }, persist: true, cancellationToken);
 
-    private async Task PlayIndexAsync(IPlayer player, PlayerQueue queue, int index, CancellationToken cancellationToken, string? takeoverPlayerId = null)
+    private async Task PlayIndexAsync(
+        IPlayer player,
+        PlayerQueue queue,
+        int index,
+        CancellationToken cancellationToken,
+        string? takeoverPlayerId = null,
+        TimeSpan startPosition = default)
     {
         queue.SetCurrent(index);
         var item = queue.Items[index].Item;
@@ -203,7 +250,7 @@ public sealed class QueueManager
         StreamSource stream;
         try
         {
-            stream = await provider.ResolveStreamAsync(item.Ref, new PlaybackContext(player.Id, userId, takeoverPlayerId, continuation), cancellationToken) switch
+            stream = await provider.ResolveStreamAsync(item.Ref, new PlaybackContext(player.Id, userId, takeoverPlayerId, continuation, startPosition), cancellationToken) switch
             {
                 HttpStreamSource http => await _resolver.ResolveAsync(http, cancellationToken),
                 var other => other,
@@ -231,7 +278,11 @@ public sealed class QueueManager
         _logger.LogInformation("Playing {Item} on {Player} via {Url}", item.Ref, player.Name, url);
 
         var continuous = stream is ProducedStreamSource { Continuous: true };
-        var media = MediaFor(item, url, path, stream.GetContentType(), stream.IsLive, continuous);
+        var media = MediaFor(item, url, path, stream.GetContentType(), stream.IsLive, continuous) with
+        {
+            // Only producers start further in; other streams start at the beginning.
+            StartPosition = stream is ProducedStreamSource ? startPosition : TimeSpan.Zero,
+        };
         continuation.Media = media;
         await player.PlayAsync(media, cancellationToken);
     }

@@ -93,6 +93,9 @@ public sealed record VolumeRequest(double Level);
 
 public sealed record MuteRequest(bool Muted);
 
+/// <param name="PositionSeconds">The position in the current item, as <see cref="NowPlayingDto.Position"/> shows it.</param>
+public sealed record SeekRequest(double PositionSeconds);
+
 public sealed record QueueDto(
     string PlayerId,
     IReadOnlyList<QueueItemDto> Items,

@@ -52,13 +52,16 @@ public enum RemotePlayerCommandType
     Stop,
     SetVolume,
     SetMuted,
+    Seek,
 }
 
+/// <param name="PositionSeconds">For <see cref="RemotePlayerCommandType.Seek"/>: the position in the stream that plays.</param>
 public sealed record RemotePlayerCommandDto(
     RemotePlayerCommandType Type,
     RemoteMediaDto? Media = null,
     double? Volume = null,
-    bool? Muted = null);
+    bool? Muted = null,
+    double? PositionSeconds = null);
 
 /// <param name="StreamUrl">Relative to the server (<c>/api/stream/...</c>) or absolute for direct streams.</param>
 public sealed record RemoteMediaDto(string StreamUrl, string ContentType, bool IsLive, string ItemUri, string Title, string? Subtitle, string? ImageUrl, double? DurationSeconds);

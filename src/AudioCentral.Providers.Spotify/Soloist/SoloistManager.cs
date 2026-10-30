@@ -38,6 +38,9 @@ internal sealed partial class SoloistManager(
     // How long before the end of a track the next one starts: keeps autoplay out, costs at most this much of the tail.
     private static readonly TimeSpan NextTrackLead = TimeSpan.FromMilliseconds(250);
 
+    // After a seek, how long the recording is still dropped: ffmpeg's own delay is around half a second.
+    private static readonly TimeSpan SeekSettle = TimeSpan.FromMilliseconds(600);
+
     private readonly ILogger _logger = loggerFactory.CreateLogger<SoloistManager>();
     private readonly SemaphoreSlim _installLock = new(1, 1);
     private readonly SemaphoreSlim _audioLock = new(1, 1);
@@ -109,10 +112,12 @@ internal sealed partial class SoloistManager(
     /// straight away, so there is no gap and the player does not buffer again. Returns when <paramref name="next"/>
     /// has nothing more; Soloist is paused then, so it does not continue with autoplay.
     /// </summary>
+    /// <param name="start">Where in <paramref name="first"/> to start (a seek restarts the stream there).</param>
     /// <param name="next">Gets the stream offset where the next track starts; returns its id and duration, or <c>null</c>.</param>
     public async Task StreamTracksAsync(
         SpotifyAccount account,
         SoloistTrack first,
+        TimeSpan start,
         Stream output,
         Func<TimeSpan, CancellationToken, Task<SoloistTrack?>> next,
         CancellationToken cancellationToken)
@@ -137,7 +142,7 @@ internal sealed partial class SoloistManager(
 
         try
         {
-            await PlayTracksAsync(account, first, output, next, token);
+            await PlayTracksAsync(account, first, start, output, next, token);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -154,11 +159,15 @@ internal sealed partial class SoloistManager(
     private async Task PlayTracksAsync(
         SpotifyAccount account,
         SoloistTrack first,
+        TimeSpan start,
         Stream output,
         Func<TimeSpan, CancellationToken, Task<SoloistTrack?>> next,
         CancellationToken cancellationToken)
     {
         var sink = SinkName(account);
+        // Soloist cannot start a track further in: it starts at the beginning and seeks, and the recording of that
+        // first moment is dropped.
+        var gate = new GateStream(output, open: start <= TimeSpan.Zero);
         var daemon = await GetDaemonAsync(account, cancellationToken);
         var watch = new TrackWatch(first);
         void OnEvent(object? sender, SoloistEvent e) => Volatile.Read(ref watch).Handle(e);
@@ -167,7 +176,7 @@ internal sealed partial class SoloistManager(
         var preroll = await GetPrerollAsync(cancellationToken);
         await output.WriteAsync(preroll, cancellationToken);
         using var recorder = Start(options.Value.FfmpegPath, RecorderArguments(sink), account.Id, pulse, redirectInput: true, captureOutput: false);
-        var copy = recorder.StandardOutput.BaseStream.CopyToAsync(output, cancellationToken);
+        var copy = recorder.StandardOutput.BaseStream.CopyToAsync(gate, cancellationToken);
 
         daemon.EventReceived += OnEvent;
         var offset = options.Value.SoloistPreroll > TimeSpan.Zero ? options.Value.SoloistPreroll : TimeSpan.Zero;
@@ -190,8 +199,20 @@ internal sealed partial class SoloistManager(
                 }
 
                 _logger.LogInformation("Soloist plays {Uri} after {Milliseconds} ms", watch.Uri, elapsed.ElapsedMilliseconds);
+                var dropped = TimeSpan.Zero;
+                if (!gate.IsOpen)
+                {
+                    await daemon.SendAsync("seek", new Dictionary<string, object?> { ["position_ms"] = (long)start.TotalMilliseconds }, cancellationToken);
+                    watch.Seeked(start);
+                    // Let the audio from before the seek pass through PulseAudio and ffmpeg.
+                    await Task.Delay(SeekSettle, cancellationToken);
+                    dropped = watch.PlayedFor;
+                    gate.Open();
+                    _logger.LogInformation("Soloist seeked {Uri} to {Position}", watch.Uri, start);
+                }
+
                 var end = await WaitForEndAsync(watch, cancellationToken);
-                offset += watch.PlayedFor;
+                offset += watch.PlayedFor - dropped;
 
                 if (await next(offset, cancellationToken) is { } following)
                 {
@@ -232,6 +253,51 @@ internal sealed partial class SoloistManager(
             daemon.EventReceived -= OnEvent;
             Kill(recorder);
         }
+    }
+
+    /// <summary>Drops what is written until it is opened.</summary>
+    private sealed class GateStream(Stream inner, bool open) : Stream
+    {
+        private volatile bool _open = open;
+
+        public bool IsOpen => _open;
+
+        public void Open() => _open = true;
+
+        public override bool CanRead => false;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() => inner.Flush();
+
+        public override Task FlushAsync(CancellationToken cancellationToken) => inner.FlushAsync(cancellationToken);
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            if (_open)
+            {
+                inner.Write(buffer, offset, count);
+            }
+        }
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+            _open ? inner.WriteAsync(buffer, cancellationToken) : ValueTask.CompletedTask;
     }
 
     /// <summary>The stream that currently uses an account's Soloist.</summary>
@@ -309,6 +375,16 @@ internal sealed partial class SoloistManager(
         public TimeSpan Position => TimeSpan.FromMilliseconds(_positionMs) + _sincePosition.Elapsed;
 
         public TimeSpan PlayedFor => _played.Elapsed;
+
+        /// <summary>Soloist was asked to seek: count from there until it reports the position itself.</summary>
+        public void Seeked(TimeSpan position)
+        {
+            _positionMs = (long)position.TotalMilliseconds;
+            if (_playing)
+            {
+                _sincePosition.Restart();
+            }
+        }
 
         public void Handle(SoloistEvent e)
         {

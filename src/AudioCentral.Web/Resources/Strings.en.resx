@@ -23,6 +23,7 @@
   <data name="Mute" xml:space="preserve"><value>Mute</value></data>
   <data name="Unmute" xml:space="preserve"><value>Unmute</value></data>
   <data name="Volume" xml:space="preserve"><value>Volume</value></data>
+  <data name="Seek" xml:space="preserve"><value>Position</value></data>
   <data name="PlayNext" xml:space="preserve"><value>Play next</value></data>
   <data name="AddToQueue" xml:space="preserve"><value>Add to queue</value></data>
   <data name="Library" xml:space="preserve"><value>Library</value></data>

@@ -23,6 +23,7 @@
   <data name="Mute" xml:space="preserve"><value>Dempen</value></data>
   <data name="Unmute" xml:space="preserve"><value>Dempen opheffen</value></data>
   <data name="Volume" xml:space="preserve"><value>Volume</value></data>
+  <data name="Seek" xml:space="preserve"><value>Positie</value></data>
   <data name="PlayNext" xml:space="preserve"><value>Hierna afspelen</value></data>
   <data name="AddToQueue" xml:space="preserve"><value>Toevoegen aan wachtrij</value></data>
   <data name="Library" xml:space="preserve"><value>Bibliotheek</value></data>

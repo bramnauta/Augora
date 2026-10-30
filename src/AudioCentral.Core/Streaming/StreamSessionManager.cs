@@ -8,6 +8,9 @@ public sealed record StreamSession(string Token, string PlayerId, StreamSource S
 {
     /// <summary>Path of the stream endpoint, relative to the server root.</summary>
     public string RelativePath => $"/api/stream/{Token}";
+
+    /// <summary>What a radio station says it plays now (ICY <c>StreamTitle</c>), usually "Artist - Title".</summary>
+    public string? StreamTitle { get; internal set; }
 }
 
 /// <summary>
@@ -19,6 +22,24 @@ public sealed class StreamSessionManager(TimeProvider timeProvider)
     private static readonly TimeSpan MaxAge = TimeSpan.FromHours(24);
 
     private readonly ConcurrentDictionary<string, StreamSession> _sessions = new();
+
+    /// <summary>Raised with the player id when the stream title of its current session changed.</summary>
+    public event EventHandler<string>? StreamTitleChanged;
+
+    public void SetStreamTitle(StreamSession session, string? title)
+    {
+        title = string.IsNullOrWhiteSpace(title) ? null : title;
+        if (session.StreamTitle == title)
+        {
+            return;
+        }
+
+        session.StreamTitle = title;
+        if (_sessions.TryGetValue(session.Token, out var current) && ReferenceEquals(current, session))
+        {
+            StreamTitleChanged?.Invoke(this, session.PlayerId);
+        }
+    }
 
     public StreamSession Create(string playerId, StreamSource stream)
     {

@@ -84,13 +84,17 @@ internal sealed class RemotePlayer(string id, string name, PlayerKind kind, IRem
     {
         lock (_lock)
         {
-            TimeSpan? position = state.PositionSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null;
             var current = _current;
+            TimeSpan? position = state.PositionSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null;
             // Flow mode: the device reports its position in the whole stream; show the item playing there.
             if (current is { Continuous: true } && position is { } streamPosition && _segments.At(streamPosition) is { } segment)
             {
                 current = segment.Media;
                 position = segment.Position;
+            }
+            else if (current is not null && position is { } itemStreamPosition)
+            {
+                position = current.ItemPosition(itemStreamPosition);
             }
 
             var nowPlaying = current is not null && state.State != PlaybackState.Idle
@@ -150,6 +154,17 @@ internal sealed class RemotePlayer(string id, string name, PlayerKind kind, IRem
 
     public Task SetMutedAsync(bool muted, CancellationToken cancellationToken) =>
         SendAsync(new(RemotePlayerCommandType.SetMuted, Muted: muted), cancellationToken);
+
+    public Task SeekAsync(TimeSpan position, CancellationToken cancellationToken)
+    {
+        TimeSpan start;
+        lock (_lock)
+        {
+            start = _current?.StartPosition ?? TimeSpan.Zero;
+        }
+
+        return SendAsync(new(RemotePlayerCommandType.Seek, PositionSeconds: Math.Max(0, (position - start).TotalSeconds)), cancellationToken);
+    }
 
     private Task SendAsync(RemotePlayerCommandDto command, CancellationToken cancellationToken) =>
         ConnectionId is { } connectionId

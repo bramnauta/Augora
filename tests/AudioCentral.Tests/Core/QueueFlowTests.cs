@@ -20,12 +20,13 @@ public sealed class QueueFlowTests
 
     public QueueFlowTests()
     {
-        var players = new PlayerManager([new FakePlayerProvider(_player)], new NoEvents(), NullLogger<PlayerManager>.Instance);
+        var sessions = new StreamSessionManager(TimeProvider.System);
+        var players = new PlayerManager([new FakePlayerProvider(_player)], new NoEvents(), sessions, NullLogger<PlayerManager>.Instance);
         _queues = new QueueManager(
             players,
             new LibraryService([_provider], NullLogger<LibraryService>.Instance),
             new StreamResolver(new HttpClient(), NullLogger<StreamResolver>.Instance),
-            new StreamSessionManager(TimeProvider.System),
+            sessions,
             new FakeUrls(),
             new MemoryQueueStore(),
             new NoEvents(),
@@ -72,6 +73,20 @@ public sealed class QueueFlowTests
         Assert.Equal(2, (await _queues.GetQueueAsync(_player.Id, Ct)).CurrentIndex);
     }
 
+    [Fact]
+    public async Task A_seek_in_a_flow_stream_restarts_the_item_at_the_position()
+    {
+        await _queues.PlayAsync(_player.Id, "fake:track:1", QueueOption.Replace, Ct, following: ["fake:track:2"]);
+
+        await _queues.SeekAsync(_player.Id, TimeSpan.FromSeconds(90), Ct);
+
+        Assert.Null(_player.SeekedTo);
+        Assert.Equal(TimeSpan.FromSeconds(90), _provider.Context!.StartPosition);
+        Assert.Equal(("fake:track:1", TimeSpan.FromSeconds(90)), (_player.Played!.ItemUri, _player.Played.StartPosition));
+        // The player reports the position in the new stream; the item is that much further.
+        Assert.Equal(TimeSpan.FromSeconds(100), _player.Played.ItemPosition(TimeSpan.FromSeconds(10)));
+    }
+
     private sealed class FakeMusicProvider : IMusicProvider
     {
         public PlaybackContext? Context { get; private set; }
@@ -108,11 +123,14 @@ public sealed class QueueFlowTests
 
         public string? Model => null;
 
-        public PlayerFeatures Features => PlayerFeatures.None;
+        public PlayerFeatures Features => PlayerFeatures.Seek;
 
-        public PlayerStatus Status => new(true, PlaybackState.Playing, 1, false, null, null);
+        public PlayerStatus Status => new(true, PlaybackState.Playing, 1, false,
+            Played is { } media ? new NowPlayingDto(media.ItemUri, media.Title, null, null, false, TimeSpan.Zero, media.Duration) : null, null);
 
         public PlayMedia? Played { get; private set; }
+
+        public TimeSpan? SeekedTo { get; private set; }
 
         public List<(PlayMedia Media, TimeSpan Offset)> Segments { get; } = [];
 
@@ -146,6 +164,12 @@ public sealed class QueueFlowTests
         public Task SetVolumeAsync(double level, CancellationToken cancellationToken) => Task.CompletedTask;
 
         public Task SetMutedAsync(bool muted, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task SeekAsync(TimeSpan position, CancellationToken cancellationToken)
+        {
+            SeekedTo = position;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakePlayerProvider(IPlayer player) : IPlayerProvider

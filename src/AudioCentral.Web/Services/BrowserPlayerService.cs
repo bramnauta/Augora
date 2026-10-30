@@ -204,6 +204,9 @@ public sealed class BrowserPlayerService(IJSRuntime js, PlayerStore store) : IAs
             case RemotePlayerCommandType.SetMuted when command.Muted is { } muted:
                 await _module.InvokeVoidAsync("setMuted", muted);
                 break;
+            case RemotePlayerCommandType.Seek when command.PositionSeconds is { } position:
+                await _module.InvokeVoidAsync("seek", position);
+                break;
         }
     }
 

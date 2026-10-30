@@ -38,7 +38,7 @@ export function init(dotnetRef, volume) {
     audio.preload = "none";
     audio.volume = volume ?? 1;
 
-    for (const name of ["playing", "pause", "waiting", "volumechange", "loadstart"]) {
+    for (const name of ["playing", "pause", "waiting", "volumechange", "loadstart", "seeked"]) {
         audio.addEventListener(name, () => report());
     }
     audio.addEventListener("timeupdate", () => {
@@ -135,6 +135,12 @@ export function setVolume(level) {
 
 export function setMuted(muted) {
     audio.muted = muted;
+}
+
+/** The browser fetches the new position with a byte range; the position is reported once it is there. */
+export function seek(seconds) {
+    if (!current || !Number.isFinite(seconds)) return;
+    audio.currentTime = Math.max(0, seconds);
 }
 
 export function describe() {

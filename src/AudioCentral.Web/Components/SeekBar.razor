@@ -1,0 +1,96 @@
+@implements IDisposable
+@inject ApiClient Api
+@inject NotificationService Notifications
+@inject IStringLocalizer<Strings> L
+
+@* Position in the current item; drag to seek. Shown for items with a known length on players that can seek. *@
+@if (Visible)
+{
+    <div class="seek-bar">
+        <span class="seek-time">@Format(_dragging ?? Position)</span>
+        <input type="range" min="0" max="@((int)Duration.TotalSeconds)" step="1" value="@((int)(_dragging ?? Position).TotalSeconds)"
+               disabled="@(!Player.Available)" title="@L["Seek"]"
+               @oninput="OnInput" @onchange="OnChangeAsync" />
+        <span class="seek-time">@Format(Duration)</span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public PlayerDto Player { get; set; } = default!;
+
+    private readonly System.Diagnostics.Stopwatch _since = new();
+    private PlayerDto? _base;
+    private TimeSpan? _dragging;
+    private Timer? _timer;
+
+    private NowPlayingDto? NowPlaying => Player.NowPlaying;
+
+    private bool Visible => NowPlaying is { IsLive: false, Duration: { } duration } && duration > TimeSpan.Zero
+        && Player.Features.HasFlag(PlayerFeatures.Seek);
+
+    private TimeSpan Duration => NowPlaying?.Duration ?? TimeSpan.Zero;
+
+    /// <summary>The reported position plus the time played since it arrived: players report it only now and then.</summary>
+    private TimeSpan Position
+    {
+        get
+        {
+            var position = (NowPlaying?.Position ?? TimeSpan.Zero) + (Player.State == PlaybackState.Playing ? _since.Elapsed : TimeSpan.Zero);
+            return position > Duration ? Duration : position;
+        }
+    }
+
+    protected override void OnInitialized() =>
+        _timer = new Timer(_ => InvokeAsync(() =>
+        {
+            if (Visible && Player.State == PlaybackState.Playing && _dragging is null)
+            {
+                StateHasChanged();
+            }
+        }), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+
+    protected override void OnParametersSet()
+    {
+        // Every status from the server is a new object with a fresh position; other renders keep counting.
+        if (!ReferenceEquals(Player, _base))
+        {
+            _base = Player;
+            _since.Restart();
+        }
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var seconds))
+        {
+            _dragging = TimeSpan.FromSeconds(seconds);
+        }
+    }
+
+    private async Task OnChangeAsync(ChangeEventArgs e)
+    {
+        OnInput(e);
+        if (_dragging is not { } target)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.SeekAsync(Player.Id, target.TotalSeconds);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
+        }
+        finally
+        {
+            _dragging = null;
+        }
+    }
+
+    private static string Format(TimeSpan time) => time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"m\:ss");
+
+    public void Dispose() => _timer?.Dispose();
+}

@@ -145,6 +145,19 @@ internal sealed class CastPlayer : IPlayer, IContinuousStreamPlayer, IAsyncDispo
     public Task SetMutedAsync(bool muted, CancellationToken cancellationToken) =>
         RunCommandAsync(client => client.ReceiverChannel.SetMute(muted), cancellationToken);
 
+    /// <summary>The receiver seeks itself, with byte ranges on the stream (also what the device's own screen does).</summary>
+    public Task SeekAsync(TimeSpan position, CancellationToken cancellationToken) =>
+        RunCommandAsync(client =>
+        {
+            TimeSpan start;
+            lock (_stateLock)
+            {
+                start = _current?.StartPosition ?? TimeSpan.Zero;
+            }
+
+            return client.MediaChannel.SeekAsync(Math.Max(0, (position - start).TotalSeconds));
+        }, cancellationToken);
+
     public async ValueTask DisposeAsync()
     {
         await _stopping.CancelAsync();
@@ -318,8 +331,10 @@ internal sealed class CastPlayer : IPlayer, IContinuousStreamPlayer, IAsyncDispo
         NowPlayingDto? nowPlaying = null;
         if (isOurs && _current is { } current && state != PlaybackState.Idle)
         {
-            TimeSpan? position = _mediaStatus is { } media ? TimeSpan.FromSeconds(media.CurrentTime) : null;
-            if (current.Continuous && StreamPosition(state) is { } streamPosition && _segments.At(streamPosition) is { } segment)
+            // The device reports its time only on changes: count on from there, so every status has a current position.
+            var streamPosition = StreamPosition(state);
+            TimeSpan? position = streamPosition is { } played ? current.ItemPosition(played) : null;
+            if (current.Continuous && streamPosition is { } inStream && _segments.At(inStream) is { } segment)
             {
                 current = segment.Media;
                 position = segment.Position;

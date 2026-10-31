@@ -53,7 +53,10 @@ internal static class LibrarySourceEndpoints
 
         podcasts.MapPost("/", async (SubscribePodcastRequest request, [FromServices] PodcastProvider provider, CancellationToken ct) =>
                 ToDto(await provider.SubscribeAsync(request.FeedUrl, ct)))
-            .WithSummary("Subscribe to a podcast by its RSS feed url (shared by all users).");
+            .WithSummary("Subscribe to a podcast by its RSS feed url. Subscriptions are personal.");
+
+        podcasts.MapGet("/new", ([FromServices] PodcastProvider provider, CancellationToken ct) => provider.GetNewEpisodesAsync(ct))
+            .WithSummary("The newest episode of every subscribed podcast that is not fully heard, newest first.");
 
         podcasts.MapDelete("/{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id, [FromServices] PodcastProvider provider, CancellationToken ct) =>
             await provider.UnsubscribeAsync(id, ct) ? TypedResults.NoContent() : TypedResults.NotFound());

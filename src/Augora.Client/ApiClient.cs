@@ -65,6 +65,8 @@ public sealed class ApiClient(HttpClient http)
 
     public Task UnsubscribePodcastAsync(Guid id) => SendAsync(HttpMethod.Delete, $"api/podcasts/{id}");
 
+    public Task<List<NewPodcastEpisodeDto>> GetNewPodcastEpisodesAsync() => GetAsync<List<NewPodcastEpisodeDto>>("api/podcasts/new");
+
     public Task<List<PodcastSearchResultDto>> SearchPodcastDirectoryAsync(string query) =>
         GetAsync<List<PodcastSearchResultDto>>($"api/podcasts/search?q={Uri.EscapeDataString(query)}");
 

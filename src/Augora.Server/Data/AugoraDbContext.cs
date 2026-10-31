@@ -17,6 +17,8 @@ public sealed class AugoraDbContext(DbContextOptions<AugoraDbContext> options) :
 
     public DbSet<StoredPodcast> Podcasts => Set<StoredPodcast>();
 
+    public DbSet<StoredPodcastProgress> PodcastProgress => Set<StoredPodcastProgress>();
+
     public DbSet<StoredSyncGroup> SyncGroups => Set<StoredSyncGroup>();
 
     public DbSet<StoredSetting> Settings => Set<StoredSetting>();
@@ -64,7 +66,16 @@ public sealed class AugoraDbContext(DbContextOptions<AugoraDbContext> options) :
             e.Property(p => p.Title).HasMaxLength(500);
             e.Property(p => p.Author).HasMaxLength(500);
             e.Property(p => p.ImageUrl).HasMaxLength(2000);
-            e.HasIndex(p => p.FeedUrl).IsUnique();
+            e.Property(p => p.LatestEpisodeKey).HasMaxLength(100);
+            e.HasIndex(p => new { p.UserId, p.FeedUrl }).IsUnique();
+            e.HasOne<AppUser>().WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<StoredPodcastProgress>(e =>
+        {
+            e.HasKey(p => new { p.UserId, p.EpisodeId });
+            e.Property(p => p.EpisodeId).HasMaxLength(3000);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<StoredSetting>(e =>
@@ -99,10 +110,12 @@ public sealed class StoredSyncGroup
     public List<string> MemberIds { get; set; } = [];
 }
 
-/// <summary>A podcast subscription, shared by all users.</summary>
+/// <summary>A podcast subscription of one user.</summary>
 public sealed class StoredPodcast
 {
     public Guid Id { get; set; }
+
+    public required string UserId { get; set; }
 
     public required string FeedUrl { get; set; }
 
@@ -113,6 +126,28 @@ public sealed class StoredPodcast
     public string? ImageUrl { get; set; }
 
     public DateTimeOffset SubscribedAt { get; set; }
+
+    /// <summary>The newest episode when the feed was last checked; later ones are new.</summary>
+    public string? LatestEpisodeKey { get; set; }
+
+    public DateTimeOffset? LatestPublishedAt { get; set; }
+}
+
+/// <summary>How far a user listened to a podcast episode.</summary>
+public sealed class StoredPodcastProgress
+{
+    public required string UserId { get; set; }
+
+    /// <summary>The item id of the episode: <c>{feed}/{episode}</c>.</summary>
+    public required string EpisodeId { get; set; }
+
+    public TimeSpan Position { get; set; }
+
+    public TimeSpan? Duration { get; set; }
+
+    public bool Completed { get; set; }
+
+    public DateTimeOffset UpdatedAt { get; set; }
 }
 
 /// <summary>A linked Spotify account. The refresh token is encrypted with ASP.NET Core data protection.</summary>

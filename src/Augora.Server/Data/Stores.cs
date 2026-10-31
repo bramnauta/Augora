@@ -115,13 +115,17 @@ internal sealed class EfSpotifyAccountStore(IDbContextFactory<AugoraDbContext> d
 
 internal sealed class EfPodcastStore(IDbContextFactory<AugoraDbContext> dbFactory, TimeProvider timeProvider) : IPodcastStore
 {
-    public async Task<IReadOnlyList<PodcastSubscription>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<PodcastSubscription>> GetAllAsync(string userId, CancellationToken cancellationToken)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Podcasts.AsNoTracking()
-            .OrderBy(p => p.Title)
-            .Select(p => new PodcastSubscription(p.Id, p.FeedUrl, p.Title, p.Author, p.ImageUrl))
-            .ToListAsync(cancellationToken);
+        var stored = await db.Podcasts.AsNoTracking().Where(p => p.UserId == userId).OrderBy(p => p.Title).ToListAsync(cancellationToken);
+        return stored.Select(ToSubscription).ToList();
+    }
+
+    public async Task<IReadOnlyList<PodcastSubscription>> GetEveryoneAsync(CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return (await db.Podcasts.AsNoTracking().ToListAsync(cancellationToken)).Select(ToSubscription).ToList();
     }
 
     public async Task<PodcastSubscription> AddAsync(PodcastSubscription subscription, CancellationToken cancellationToken)
@@ -130,21 +134,68 @@ internal sealed class EfPodcastStore(IDbContextFactory<AugoraDbContext> dbFactor
         db.Podcasts.Add(new StoredPodcast
         {
             Id = subscription.Id,
+            UserId = subscription.UserId,
             FeedUrl = subscription.FeedUrl,
             Title = subscription.Title,
             Author = subscription.Author,
             ImageUrl = subscription.ImageUrl,
             SubscribedAt = timeProvider.GetUtcNow(),
+            LatestEpisodeKey = subscription.LatestEpisodeKey,
+            LatestPublishedAt = subscription.LatestPublishedAt,
         });
         await db.SaveChangesAsync(cancellationToken);
         return subscription;
     }
 
-    public async Task<bool> RemoveAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<bool> RemoveAsync(string userId, Guid id, CancellationToken cancellationToken)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Podcasts.Where(p => p.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
+        return await db.Podcasts.Where(p => p.Id == id && p.UserId == userId).ExecuteDeleteAsync(cancellationToken) > 0;
     }
+
+    public async Task SetLatestEpisodeAsync(Guid id, string episodeKey, DateTimeOffset? publishedAt, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await db.Podcasts.Where(p => p.Id == id).ExecuteUpdateAsync(
+            set => set.SetProperty(p => p.LatestEpisodeKey, episodeKey).SetProperty(p => p.LatestPublishedAt, publishedAt), cancellationToken);
+    }
+
+    public async Task<PodcastProgress?> GetProgressAsync(string userId, string episodeId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var stored = await db.PodcastProgress.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId && p.EpisodeId == episodeId, cancellationToken);
+        return stored is null ? null : new PodcastProgress(stored.EpisodeId, stored.Position, stored.Duration, stored.Completed);
+    }
+
+    public async Task<IReadOnlyDictionary<string, PodcastProgress>> GetProgressAsync(
+        string userId, IReadOnlyCollection<string> episodeIds, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var stored = await db.PodcastProgress.AsNoTracking()
+            .Where(p => p.UserId == userId && episodeIds.Contains(p.EpisodeId))
+            .ToListAsync(cancellationToken);
+        return stored.ToDictionary(p => p.EpisodeId, p => new PodcastProgress(p.EpisodeId, p.Position, p.Duration, p.Completed));
+    }
+
+    public async Task SaveProgressAsync(string userId, PodcastProgress progress, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var stored = await db.PodcastProgress.FirstOrDefaultAsync(p => p.UserId == userId && p.EpisodeId == progress.EpisodeId, cancellationToken);
+        if (stored is null)
+        {
+            stored = new StoredPodcastProgress { UserId = userId, EpisodeId = progress.EpisodeId };
+            db.PodcastProgress.Add(stored);
+        }
+
+        stored.Position = progress.Position;
+        stored.Duration = progress.Duration;
+        stored.Completed = progress.Completed;
+        stored.UpdatedAt = timeProvider.GetUtcNow();
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static PodcastSubscription ToSubscription(StoredPodcast p) =>
+        new(p.Id, p.UserId, p.FeedUrl, p.Title, p.Author, p.ImageUrl, p.LatestEpisodeKey, p.LatestPublishedAt);
 }
 
 internal sealed class EfSyncGroupStore(AugoraDbContext db) : ISyncGroupStore

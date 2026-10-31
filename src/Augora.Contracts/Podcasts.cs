@@ -5,6 +5,23 @@ public sealed record PodcastSubscriptionDto(Guid Id, string FeedUrl, string Titl
 
 public sealed record SubscribePodcastRequest(string FeedUrl);
 
+/// <summary>The newest episode of a subscribed podcast that the user has not fully heard.</summary>
+/// <param name="Episode">Playable episode; its subtitle holds the podcast and the publication date.</param>
+/// <param name="PodcastTitle">The podcast the episode belongs to.</param>
+/// <param name="PublishedAt">When the episode was published, when the feed says.</param>
+/// <param name="Position">How far the user listened; <c>null</c> when not started. Playback resumes there.</param>
+public sealed record NewPodcastEpisodeDto(MediaItemDto Episode, string PodcastTitle, DateTimeOffset? PublishedAt, TimeSpan? Position);
+
+/// <summary>Event payload (<see cref="EventsHub.PodcastEpisodeAdded"/>) when a subscribed podcast publishes an episode.</summary>
+public sealed record PodcastEpisodeAddedDto(
+    string PodcastUri,
+    string PodcastTitle,
+    string EpisodeUri,
+    string EpisodeTitle,
+    DateTimeOffset? PublishedAt,
+    TimeSpan? Duration,
+    string? ImageUrl);
+
 public sealed record PodcastSearchResultDto(string Title, string? Author, string FeedUrl, string? ImageUrl, string Uri);
 
 public sealed record LocalFolderDto(string Name, string Path);

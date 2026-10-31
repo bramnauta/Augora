@@ -127,6 +127,8 @@
   <data name="ConfirmRemoveSpotify" xml:space="preserve"><value>Spotify-account {0} ontkoppelen?</value></data>
   <data name="Nav_Podcasts" xml:space="preserve"><value>Podcasts</value></data>
   <data name="PodcastSubscriptions" xml:space="preserve"><value>Abonnementen</value></data>
+  <data name="PodcastNewEpisodes" xml:space="preserve"><value>Nieuwe afleveringen</value></data>
+  <data name="PodcastResumeAt" xml:space="preserve"><value>Hervat bij {0}</value></data>
   <data name="NoPodcasts" xml:space="preserve"><value>Nog geen podcasts. Zoek er hieronder een of plak de URL van een RSS-feed.</value></data>
   <data name="PodcastFind" xml:space="preserve"><value>Podcast toevoegen</value></data>
   <data name="PodcastSearchOrUrl" xml:space="preserve"><value>Zoeken of RSS-feed-URL</value></data>

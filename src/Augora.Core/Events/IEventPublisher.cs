@@ -12,4 +12,7 @@ public interface IEventPublisher
     Task PlayerRemovedAsync(string playerId);
 
     Task QueueUpdatedAsync(QueueDto queue);
+
+    /// <summary>A podcast the user subscribed to published an episode; only that user's connections get it.</summary>
+    Task PodcastEpisodeAddedAsync(string userId, PodcastEpisodeAddedDto episode);
 }

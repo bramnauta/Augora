@@ -37,6 +37,9 @@ internal sealed class SignalREventPublisher(IHubContext<AugoraHub> hub) : IEvent
     public Task PlayerRemovedAsync(string playerId) => hub.Clients.All.SendAsync(EventsHub.PlayerRemoved, playerId);
 
     public Task QueueUpdatedAsync(QueueDto queue) => hub.Clients.All.SendAsync(EventsHub.QueueUpdated, queue);
+
+    public Task PodcastEpisodeAddedAsync(string userId, PodcastEpisodeAddedDto episode) =>
+        hub.Clients.User(userId).SendAsync(EventsHub.PodcastEpisodeAdded, episode);
 }
 
 internal sealed class SignalRRemotePlayerChannel(IHubContext<AugoraHub> hub) : IRemotePlayerChannel

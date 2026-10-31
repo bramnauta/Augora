@@ -127,6 +127,8 @@
   <data name="ConfirmRemoveSpotify" xml:space="preserve"><value>Unlink Spotify account {0}?</value></data>
   <data name="Nav_Podcasts" xml:space="preserve"><value>Podcasts</value></data>
   <data name="PodcastSubscriptions" xml:space="preserve"><value>Subscriptions</value></data>
+  <data name="PodcastNewEpisodes" xml:space="preserve"><value>New episodes</value></data>
+  <data name="PodcastResumeAt" xml:space="preserve"><value>Resumes at {0}</value></data>
   <data name="NoPodcasts" xml:space="preserve"><value>No podcasts yet. Search for one below or paste the url of an RSS feed.</value></data>
   <data name="PodcastFind" xml:space="preserve"><value>Add podcast</value></data>
   <data name="PodcastSearchOrUrl" xml:space="preserve"><value>Search or RSS feed url</value></data>

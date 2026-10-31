@@ -541,7 +541,37 @@ public sealed class QueueManager
         };
         continuation.Media = media;
         await player.PlayAsync(media, cancellationToken);
+
+        if (startPosition == TimeSpan.Zero && userId is not null)
+        {
+            await ResumeProgressAsync(player, provider, item, userId, cancellationToken);
+        }
     }
+
+    /// <summary>Continues an item the user did not finish (podcast episode) where they stopped.</summary>
+    private async Task ResumeProgressAsync(IPlayer player, IMusicProvider provider, MediaItem item, string userId, CancellationToken cancellationToken)
+    {
+        if (provider is not IPlaybackProgressProvider progress || !progress.TracksProgress(item.Ref) || !player.Features.HasFlag(PlayerFeatures.Seek))
+        {
+            return;
+        }
+
+        try
+        {
+            if (await progress.GetResumePositionAsync(item.Ref, userId, cancellationToken) is { } position && position > MinResumeSeek)
+            {
+                _logger.LogInformation("Resuming {Item} on {Player} at {Position}", item.Ref, player.Name, position);
+                await player.SeekAsync(position, cancellationToken);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Resuming {Item} on {Player} failed; it plays from the start", item.Ref, player.Name);
+        }
+    }
+
+    /// <summary>The user who last started playback on the player; <c>null</c> when nobody is known.</summary>
+    public string? GetPlaybackUser(string playerId) => _lastUsers.GetValueOrDefault(playerId);
 
     private PlayMedia MediaFor(MediaItem item, Uri url, string path, string contentType, bool isLive, bool continuous)
     {

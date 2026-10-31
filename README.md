@@ -14,7 +14,8 @@ op Android. Zie [docs/architecture.md](docs/architecture.md) voor ontwerp en roa
 - ✅ Browser als speler (ook op telefoon), via hetzelfde protocol dat de Android-app gaat gebruiken
 - ✅ Spotify: meerdere accounts, bladeren (playlists, nummers, albums, artiesten), zoeken, afspelen via go-librespot
 - ✅ Lokale bestanden (NAS): bladeren per map, artiest en album, zoeken in tags, artwork
-- ✅ Podcasts: abonneren via RSS-URL of zoeken in de iTunes-catalogus
+- ✅ Podcasts: abonneren (per gebruiker) via RSS-URL of zoeken in de iTunes-catalogus, hervatten waar je bleef,
+  nieuwe afleveringen bovenaan en als event `augora_new_podcast_episode` in Home Assistant
 - ✅ Android-app (telefoon, tablet en TV): de UI plus een native speler die op de achtergrond doorspeelt
 - 🚧 iOS-app (iPhone en iPad, MAUI): gebouwd, maar nog niet getest op een toestel
 - ✅ Home Assistant-integratie: media players, mediabrowser, realtime updates
@@ -190,6 +191,24 @@ mee via `extra: {volume_level: 0.6}` bij `media_player.play_media`. REST: `POST 
 
 Updates komen realtime binnen via de SignalR-hub. Zijn alle Spotify-accounts bezet, dan geeft de actie
 een fout met wie ze gebruiken.
+
+Podcasts zijn per gebruiker: de integratie gebruikt de abonnementen van de gebruiker van het API-token. Verschijnt
+er een nieuwe aflevering van een podcast waarop die gebruiker geabonneerd is (de server controleert elke 30
+minuten), dan komt er een event `augora_new_podcast_episode` op de Home Assistant-bus, bijvoorbeeld voor een
+melding of automatisering:
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: augora_new_podcast_episode
+actions:
+  - action: notify.mobile_app_telefoon
+    data:
+      message: "{{ trigger.event.data.podcastTitle }}: {{ trigger.event.data.episodeTitle }}"
+```
+
+De data bevat `podcastUri`, `podcastTitle`, `episodeUri` (te gebruiken als `media_content_id`), `episodeTitle`,
+`publishedAt`, `duration` en `imageUrl`.
 
 ## Ontwikkelen
 

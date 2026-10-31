@@ -10,6 +10,9 @@ SIGNAL_PLAYER_UPDATED = "augora_player_updated_{}"
 SIGNAL_QUEUE_UPDATED = "augora_queue_updated_{}"
 SIGNAL_NEW_PLAYER = "augora_new_player_{}"
 
+# Fired on the Home Assistant bus when a podcast the token's user subscribed to publishes an episode.
+EVENT_NEW_PODCAST_EPISODE = "augora_new_podcast_episode"
+
 SERVICE_ANNOUNCE = "announce"
 ATTR_MEDIA_ID = "media_id"
 ATTR_VOLUME_LEVEL = "volume_level"

@@ -263,6 +263,8 @@ public sealed class AnnounceTests
         public Task PlayerRemovedAsync(string playerId) => Task.CompletedTask;
 
         public Task QueueUpdatedAsync(QueueDto queue) => Task.CompletedTask;
+
+        public Task PodcastEpisodeAddedAsync(string userId, PodcastEpisodeAddedDto episode) => Task.CompletedTask;
     }
 
     private sealed class NoUser : ICurrentUser

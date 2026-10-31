@@ -12,7 +12,14 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .api import AugoraAuthError, AugoraClient, AugoraError, AugoraEvents
-from .const import CONF_TOKEN, CONF_URL, SIGNAL_NEW_PLAYER, SIGNAL_PLAYER_UPDATED, SIGNAL_QUEUE_UPDATED
+from .const import (
+    CONF_TOKEN,
+    CONF_URL,
+    EVENT_NEW_PODCAST_EPISODE,
+    SIGNAL_NEW_PLAYER,
+    SIGNAL_PLAYER_UPDATED,
+    SIGNAL_QUEUE_UPDATED,
+)
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SWITCH]
 
@@ -52,6 +59,9 @@ class AugoraHub:
             queue = arguments[0]
             self.queues[queue["playerId"]] = queue
             async_dispatcher_send(self.hass, SIGNAL_QUEUE_UPDATED.format(queue["playerId"]))
+        elif target == "PodcastEpisodeAdded" and arguments:
+            episode = arguments[0]
+            self.hass.bus.async_fire(EVENT_NEW_PODCAST_EPISODE, {"entry_id": self.entry.entry_id, **episode})
         elif target == "Disconnected":
             self.connected = False
             for player_id in self.players:

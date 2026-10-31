@@ -1,5 +1,6 @@
 @page "/podcasts"
 @inject ApiClient Api
+@inject PlayerStore Store
 @inject NavigationManager Navigation
 @inject NotificationService Notifications
 @inject DialogService Dialogs
@@ -10,6 +11,32 @@
 <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">@L["Nav_Podcasts"]</RadzenText>
 
 <RadzenStack Gap="1.5rem" Style="max-width: 50rem;">
+    @if (_newEpisodes is { Count: > 0 })
+    {
+        <RadzenCard Variant="Variant.Filled">
+            <RadzenText TextStyle="TextStyle.H6">@L["PodcastNewEpisodes"]</RadzenText>
+            <RadzenStack Gap="0.25rem">
+                @foreach (var entry in _newEpisodes)
+                {
+                    <RadzenStack @key="entry.Episode.Uri" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" class="media-row"
+                                 @onclick="@(() => PlayEpisodeAsync(entry))">
+                        <MediaImage Url="@entry.Episode.ImageUrl" Icon="mic" />
+                        <RadzenStack Gap="0" class="ellipsis" Style="flex: 1;">
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0 ellipsis">@entry.Episode.Name</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 ellipsis">@entry.Episode.Subtitle</RadzenText>
+                        </RadzenStack>
+                        @if (entry.Position is { } position)
+                        {
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">@L["PodcastResumeAt", FormatDuration(position)]</RadzenText>
+                        }
+                        <RadzenButton Icon="play_arrow" Variant="Variant.Text" ButtonStyle="ButtonStyle.Primary" title="@L["Play"]"
+                                      Click="@(() => PlayEpisodeAsync(entry))" @onclick:stopPropagation="true" />
+                    </RadzenStack>
+                }
+            </RadzenStack>
+        </RadzenCard>
+    }
+
     <RadzenCard Variant="Variant.Filled">
         <RadzenText TextStyle="TextStyle.H6">@L["PodcastSubscriptions"]</RadzenText>
         @if (_subscriptions is null)
@@ -81,12 +108,15 @@
 
 @code {
     private List<PodcastSubscriptionDto>? _subscriptions;
+    private List<NewPodcastEpisodeDto>? _newEpisodes;
     private List<PodcastSearchResultDto>? _results;
     private string _query = "";
     private bool _busy;
 
     protected override async Task OnInitializedAsync()
     {
+        // The episodes need the feeds, which can take a while: the page does not wait for them.
+        _ = LoadNewEpisodesAsync();
         try
         {
             _subscriptions = await Api.GetPodcastsAsync();
@@ -97,6 +127,42 @@
             Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message);
         }
     }
+
+    private async Task LoadNewEpisodesAsync()
+    {
+        try
+        {
+            _newEpisodes = await Api.GetNewPodcastEpisodesAsync();
+        }
+        catch (ApiException)
+        {
+            _newEpisodes = [];
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task PlayEpisodeAsync(NewPodcastEpisodeDto entry)
+    {
+        if (Store.SelectedPlayer is not { } player)
+        {
+            Notifications.Notify(NotificationSeverity.Warning, L["NoPlayerSelected"]);
+            return;
+        }
+
+        try
+        {
+            await Api.PlayAsync(player.Id, entry.Episode.Uri);
+            Notifications.Notify(NotificationSeverity.Success, L["PlayingOn", player.Name], entry.Episode.Name, duration: 2500);
+        }
+        catch (ApiException ex)
+        {
+            Notifications.Notify(NotificationSeverity.Error, L["Error"], ex.Message, duration: 8000);
+        }
+    }
+
+    private static string FormatDuration(TimeSpan duration) =>
+        duration.TotalHours >= 1 ? duration.ToString(@"h\:mm\:ss") : duration.ToString(@"m\:ss");
 
     private void Open(string uri) => Navigation.NavigateTo($"browse?uri={Uri.EscapeDataString(uri)}");
 
@@ -133,6 +199,7 @@
             var subscription = await Api.SubscribePodcastAsync(feedUrl);
             _subscriptions = [.. (_subscriptions ?? []).Where(s => s.Id != subscription.Id), subscription];
             Notifications.Notify(NotificationSeverity.Success, L["Subscribed"], subscription.Title, duration: 2500);
+            _ = LoadNewEpisodesAsync();
         }
         catch (ApiException ex)
         {
@@ -155,6 +222,7 @@
         {
             await Api.UnsubscribePodcastAsync(podcast.Id);
             _subscriptions = _subscriptions?.Where(s => s.Id != podcast.Id).ToList();
+            _newEpisodes = _newEpisodes?.Where(e => e.PodcastTitle != podcast.Title).ToList();
         }
         catch (ApiException ex)
         {

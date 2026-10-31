@@ -15,6 +15,9 @@ public static class EventsHub
 
     /// <summary>Server → client: <see cref="QueueDto"/>.</summary>
     public const string QueueUpdated = "QueueUpdated";
+
+    /// <summary>Server → client: <see cref="NewPodcastEpisodeDto"/>; only sent to the user who subscribed to the podcast.</summary>
+    public const string PodcastEpisodeAdded = "PodcastEpisodeAdded";
 }
 
 /// <summary>

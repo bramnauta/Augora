@@ -23,6 +23,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GroupMembership>();
         services.AddHostedService(sp => sp.GetRequiredService<PlayerManager>());
         services.AddSingleton<QueueManager>();
+        services.AddSingleton<PlaybackProgressTracker>();
+        services.AddHostedService(sp => sp.GetRequiredService<PlaybackProgressTracker>());
         services.AddSingleton<LastFmClient>();
         services.AddSingleton<ISimilarTrackSource>(sp => sp.GetRequiredService<LastFmClient>());
         services.AddHttpClient(LastFmClient.HttpClientName, client =>

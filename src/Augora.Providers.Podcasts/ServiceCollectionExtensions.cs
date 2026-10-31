@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient(PodcastProvider.DirectoryClientName, client => client.BaseAddress = new Uri("https://itunes.apple.com/"));
         services.AddSingleton<PodcastProvider>();
         services.AddSingleton<IMusicProvider>(sp => sp.GetRequiredService<PodcastProvider>());
+        services.AddHostedService<PodcastRefreshService>();
         return services;
     }
 }

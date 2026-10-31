@@ -169,6 +169,13 @@ namespace Augora.Server.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("LatestEpisodeKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LatestPublishedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset>("SubscribedAt")
                         .HasColumnType("TEXT");
 
@@ -177,12 +184,42 @@ namespace Augora.Server.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("FeedUrl")
+                    b.HasIndex("UserId", "FeedUrl")
                         .IsUnique();
 
                     b.ToTable("Podcasts");
+                });
+
+            modelBuilder.Entity("Augora.Server.Data.StoredPodcastProgress", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EpisodeId")
+                        .HasMaxLength(3000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<TimeSpan?>("Duration")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeSpan>("Position")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("UserId", "EpisodeId");
+
+                    b.ToTable("PodcastProgress");
                 });
 
             modelBuilder.Entity("Augora.Server.Data.StoredQueue", b =>
@@ -415,6 +452,24 @@ namespace Augora.Server.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Augora.Server.Data.StoredPodcast", b =>
+                {
+                    b.HasOne("Augora.Server.Data.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Augora.Server.Data.StoredPodcastProgress", b =>
+                {
+                    b.HasOne("Augora.Server.Data.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Augora.Server.Data.StoredSpotifyAccount", b =>

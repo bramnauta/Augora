@@ -46,6 +46,9 @@ public sealed class PlayerManager : IHostedService
     /// <summary>Raised when media on a player ended by itself; the queue uses this to advance.</summary>
     public event EventHandler<(IPlayer Player, PlaybackEndReason Reason)>? PlaybackEnded;
 
+    /// <summary>Raised when the status of a player changed (state, position, item).</summary>
+    public event EventHandler<IPlayer>? StatusChanged;
+
     public IReadOnlyCollection<IPlayer> Players => _players.Values.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
 
     public IPlayer Get(string id) =>
@@ -110,6 +113,7 @@ public sealed class PlayerManager : IHostedService
         if (sender is IPlayer player)
         {
             Publish(_events.PlayerUpdatedAsync(ToDto(player)));
+            StatusChanged?.Invoke(this, player);
         }
     }
 

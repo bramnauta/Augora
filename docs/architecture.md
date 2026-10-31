@@ -193,11 +193,26 @@ seconden. Daarom krijgt een speler zolang de wachtrij Spotify-nummers bevat éé
 
 ## Podcasts
 
-- Abonnementen gelden voor het hele huishouden (SQLite), toe te voegen via RSS-URL of de iTunes-zoek-API.
+- Abonnementen zijn per gebruiker (SQLite, `Podcasts.UserId`); gebruikers zien elkaars abonnementen niet. Toe te
+  voegen via RSS-URL of de iTunes-zoek-API. De migratie `PersonalPodcasts` gaf elke bestaande gebruiker een kopie
+  van de tot dan toe gedeelde abonnementen.
 - Feeds (RSS 2.0 + iTunes-extensies) worden 30 minuten gecachet; bij een fout wordt de oude kopie gebruikt.
 - Ids: `podcast:podcast:{base64url(feed)}` en `podcast:episode:{feed}/{hash(guid)}`, zodat ook podcasts
   zonder abonnement (zoekresultaten) te bladeren en af te spelen zijn.
 - Afleveringen spelen via de gewone HTTP-relay.
+- **Voortgang** per gebruiker en aflevering (`PodcastProgress`). `PlaybackProgressTracker` (Core) volgt de
+  spelerstatussen en geeft de positie van items van een `IPlaybackProgressProvider` door aan de bron, namens de
+  gebruiker die het afspelen startte (`QueueManager.GetPlaybackUser`): bij pauzeren, stoppen, een ander item en
+  elke 15 s. Een aflevering waarvan nog ≤ 30 s over is, of die klaar is, telt als beluisterd. Posities < 5 s worden
+  niet bewaard, zodat het hervatpunt niet wordt overschreven terwijl de speler nog moet zoeken. Bij afspelen zoekt
+  `QueueManager` naar het bewaarde punt (alleen spelers met seek).
+- **Nieuwe afleveringen**: `PodcastRefreshService` controleert elke 30 min alle feeds. Per abonnement staat de
+  nieuwste bekende aflevering (`LatestEpisodeKey`/`LatestPublishedAt`); wat nieuwer is (max. 5) gaat als event
+  `PodcastEpisodeAdded` naar de hub, **alleen naar de abonnee** (`Clients.User`). Bij abonneren is de huidige
+  nieuwste aflevering het startpunt, dus bestaande afleveringen geven geen event. De Home Assistant-integratie zet
+  het event op de HA-bus als `augora_new_podcast_episode` (van de gebruiker van het API-token).
+- `GET /api/podcasts/new`: per geabonneerde podcast de nieuwste aflevering die de gebruiker niet helemaal
+  beluisterde (met hervatpunt), nieuwste eerst. De pagina Podcasts toont die bovenaan.
 
 ## API
 

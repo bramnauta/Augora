@@ -11,7 +11,6 @@ public sealed partial class SearchViewModel : ObservableObject, IRowHost
     private readonly AppState _app = Ioc.Get<AppState>();
     private readonly PlayService _play = Ioc.Get<PlayService>();
     private readonly Navigator _navigator = Ioc.Get<Navigator>();
-    private readonly Dictionary<MediaRow, IReadOnlyList<MediaItemDto>> _siblings = [];
 
     [ObservableProperty]
     private bool _isBusy;
@@ -25,7 +24,6 @@ public sealed partial class SearchViewModel : ObservableObject, IRowHost
     {
         query = query?.Trim();
         Groups.Clear();
-        _siblings.Clear();
         Message = null;
         if (string.IsNullOrEmpty(query))
         {
@@ -39,11 +37,6 @@ public sealed partial class SearchViewModel : ObservableObject, IRowHost
             foreach (var provider in result.Providers.Where(p => p.Items.Count > 0))
             {
                 var rows = provider.Items.Select(i => new MediaRow(i, _app.ResolveUrl(i.ImageUrl), this)).ToList();
-                foreach (var row in rows)
-                {
-                    _siblings[row] = provider.Items;
-                }
-
                 Groups.Add(new MediaGroup(provider.ProviderName, rows));
             }
 
@@ -73,7 +66,7 @@ public sealed partial class SearchViewModel : ObservableObject, IRowHost
         return row.IsPlayable ? PlayAsync(row) : Task.CompletedTask;
     }
 
-    public Task PlayAsync(MediaRow row) => _play.PlayAsync(row.Item, QueueOption.Replace, _siblings.GetValueOrDefault(row));
+    public Task PlayAsync(MediaRow row) => _play.PlayAsync(row.Item, QueueOption.Replace);
 
     public Task MoreAsync(MediaRow row) => _play.ShowMenuAsync(row, () => PlayAsync(row));
 }

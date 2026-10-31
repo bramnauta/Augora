@@ -44,6 +44,10 @@
     [Parameter, EditorRequired]
     public IReadOnlyList<MediaItemDto> Items { get; set; } = [];
 
+    /// <summary>Whether playing a track also queues the tracks after it; not for search results, which are unrelated items.</summary>
+    [Parameter]
+    public bool PlayFromHere { get; set; } = true;
+
     private Task OpenAsync(MediaItemDto item)
     {
         if (item.IsBrowsable)
@@ -64,7 +68,7 @@
         }
 
         // "Play from here": a track played from an album or playlist brings the tracks after it, so playback continues.
-        IReadOnlyList<string>? following = option is QueueOption.Replace && item.Type is MediaType.Track or MediaType.Episode
+        IReadOnlyList<string>? following = PlayFromHere && option is QueueOption.Replace && item.Type is MediaType.Track or MediaType.Episode
             ? Items.SkipWhile(i => i.Uri != item.Uri).Skip(1).Where(i => i.IsPlayable && !i.IsBrowsable).Select(i => i.Uri).ToList()
             : null;
 

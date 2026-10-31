@@ -32,7 +32,7 @@ else if (_result is not null)
         {
             <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">@provider.Error</RadzenAlert>
         }
-        <MediaItemList Items="@provider.Items" />
+        <MediaItemList Items="@provider.Items" PlayFromHere="false" />
     }
 }
 

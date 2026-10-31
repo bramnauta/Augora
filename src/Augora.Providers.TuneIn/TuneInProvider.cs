@@ -37,6 +37,8 @@ public sealed class TuneInProvider(
 
     public string Type => ProviderId;
 
+    public int SearchOrder => 100;
+
     /// <summary>The username set in the UI, or else the one in the configuration.</summary>
     public string? Username => settings.Get(UsernameSettingKey) ?? (string.IsNullOrWhiteSpace(_options.Username) ? null : _options.Username.Trim());
 

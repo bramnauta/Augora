@@ -37,6 +37,8 @@ public sealed class PodcastProvider(IPodcastStore store, IHttpClientFactory http
 
     public string Type => ProviderId;
 
+    public int SearchOrder => 50;
+
     public static string FeedKey(string feedUrl) => Convert.ToBase64String(Encoding.UTF8.GetBytes(feedUrl)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     public static string PodcastUri(string feedUrl) => new MediaItemRef(ProviderId, MediaType.Podcast, FeedKey(feedUrl)).ToString();

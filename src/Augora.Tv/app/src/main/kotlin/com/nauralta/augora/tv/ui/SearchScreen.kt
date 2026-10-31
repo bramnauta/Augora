@@ -70,7 +70,7 @@ fun SearchScreen(app: AugoraApp, onOpen: (MediaItem) -> Unit) {
                         Text(provider.providerName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 12.dp))
                     }
                     items(provider.items, key = { "${provider.provider}:${it.uri}" }) { item ->
-                        MediaRowCard(item, app.api.resolve(item.imageUrl), provider.items, actions)
+                        MediaRowCard(item, app.api.resolve(item.imageUrl), emptyList(), actions)
                     }
                 }
             }

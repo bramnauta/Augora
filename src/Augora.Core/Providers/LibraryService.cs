@@ -43,17 +43,24 @@ public sealed class LibraryService(IEnumerable<IMusicProvider> providers, ILogge
         {
             try
             {
-                var items = await provider.SearchAsync(query, cancellationToken);
-                return new ProviderSearchResultDto(provider.Id, provider.Name, items.Select(i => i.ToDto()).ToList());
+                // Best match first within a provider (stable: equal matches keep the provider's own order).
+                var items = (await provider.SearchAsync(query, cancellationToken))
+                    .Select(i => (Item: i, Score: SearchRanking.Score(query, i)))
+                    .OrderByDescending(i => i.Score)
+                    .ToList();
+                var result = new ProviderSearchResultDto(provider.Id, provider.Name, items.Select(i => i.Item.ToDto()).ToList());
+                return (provider.SearchOrder, Best: items.Count == 0 ? 0 : items[0].Score, Result: result);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogWarning(ex, "Search in provider {Provider} failed", provider.Id);
-                return new ProviderSearchResultDto(provider.Id, provider.Name, [], ex.Message);
+                return (provider.SearchOrder, Best: 0, Result: new ProviderSearchResultDto(provider.Id, provider.Name, [], ex.Message));
             }
         });
 
-        return new SearchResultDto(query, await Task.WhenAll(tasks));
+        // The provider with the best match first; with equal matches the provider order decides (streaming before radio).
+        var results = (await Task.WhenAll(tasks)).OrderByDescending(r => r.Best).ThenBy(r => r.SearchOrder).Select(r => r.Result).ToList();
+        return new SearchResultDto(query, results);
     }
 
     public Task<IReadOnlyList<MediaItem>> GetQueueItemsAsync(MediaItem item, CancellationToken cancellationToken) =>

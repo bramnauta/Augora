@@ -46,6 +46,9 @@ public interface IMusicProvider
     /// <summary>Whether the provider currently has something to offer; unavailable providers are left out of the library.</summary>
     bool IsAvailable => true;
 
+    /// <summary>Position of the provider's results in a search: lower comes first. Broad directories (radio) go last.</summary>
+    int SearchOrder => 0;
+
     /// <summary>Provider type, e.g. <c>tunein</c> or <c>spotify</c>. Several instances may share a type.</summary>
     string Type { get; }
 

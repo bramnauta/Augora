@@ -20,19 +20,18 @@
 }
 else if (_result is not null)
 {
-    @if (_result.Providers.All(p => p.Items.Count == 0))
+    @foreach (var error in _result.Errors)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">@error.ProviderName: @error.Error</RadzenAlert>
+    }
+
+    @if (_result.Items.Count == 0)
     {
         <RadzenText TextStyle="TextStyle.Body1">@L["NoResults"]</RadzenText>
     }
-
-    @foreach (var provider in _result.Providers.Where(p => p.Items.Count > 0 || p.Error is not null))
+    else
     {
-        <RadzenText TextStyle="TextStyle.H6" class="rz-mt-4">@provider.ProviderName</RadzenText>
-        @if (provider.Error is not null)
-        {
-            <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">@provider.Error</RadzenAlert>
-        }
-        <MediaItemList Items="@provider.Items" PlayFromHere="false" />
+        <MediaItemList Items="@_result.Items" PlayFromHere="false" />
     }
 }
 

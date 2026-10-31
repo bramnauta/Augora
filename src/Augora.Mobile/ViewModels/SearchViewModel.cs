@@ -18,12 +18,12 @@ public sealed partial class SearchViewModel : ObservableObject, IRowHost
     [ObservableProperty]
     private string? _message;
 
-    public ObservableCollection<MediaGroup> Groups { get; } = [];
+    public ObservableCollection<MediaRow> Rows { get; } = [];
 
     public async Task SearchAsync(string? query)
     {
         query = query?.Trim();
-        Groups.Clear();
+        Rows.Clear();
         Message = null;
         if (string.IsNullOrEmpty(query))
         {
@@ -34,15 +34,16 @@ public sealed partial class SearchViewModel : ObservableObject, IRowHost
         try
         {
             var result = await _app.Api.SearchAsync(query);
-            foreach (var provider in result.Providers.Where(p => p.Items.Count > 0))
+            foreach (var item in result.Items)
             {
-                var rows = provider.Items.Select(i => new MediaRow(i, _app.ResolveUrl(i.ImageUrl), this)).ToList();
-                Groups.Add(new MediaGroup(provider.ProviderName, rows));
+                Rows.Add(new MediaRow(item, _app.ResolveUrl(item.ImageUrl), this));
             }
 
-            if (Groups.Count == 0)
+            if (Rows.Count == 0)
             {
-                Message = Strings.NoResults;
+                Message = result.Errors.Count > 0
+                    ? string.Join(Environment.NewLine, result.Errors.Select(e => $"{e.ProviderName}: {e.Error}"))
+                    : Strings.NoResults;
             }
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)

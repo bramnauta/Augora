@@ -24,15 +24,14 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nauralta.augora.tv.AugoraApp
 import com.nauralta.augora.tv.data.MediaItem
-import com.nauralta.augora.tv.data.ProviderSearch
 import kotlinx.coroutines.launch
 import java.io.IOException
 
-/** Search over all sources; the results are grouped by source. */
+/** Search over all sources; one list, best match first. */
 @Composable
 fun SearchScreen(app: AugoraApp, onOpen: (MediaItem) -> Unit) {
     var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<ProviderSearch>?>(null) }
+    var results by remember { mutableStateOf<List<MediaItem>?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -42,8 +41,10 @@ fun SearchScreen(app: AugoraApp, onOpen: (MediaItem) -> Unit) {
         scope.launch {
             message = S.loading
             try {
-                results = app.api.search(text).providers.filter { it.items.isNotEmpty() }
-                message = if (results.isNullOrEmpty()) S.noResults else null
+                val result = app.api.search(text)
+                results = result.items
+                message = if (result.items.isNotEmpty()) null
+                else result.errors.joinToString("\n") { "${it.providerName}: ${it.error}" }.ifEmpty { S.noResults }
             } catch (e: IOException) {
                 results = null
                 message = e.message
@@ -65,13 +66,8 @@ fun SearchScreen(app: AugoraApp, onOpen: (MediaItem) -> Unit) {
         message?.let { Text(it) }
         WithItemActions(app, onOpen) { actions ->
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-                results?.forEach { provider ->
-                    item(key = "header:${provider.provider}") {
-                        Text(provider.providerName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 12.dp))
-                    }
-                    items(provider.items, key = { "${provider.provider}:${it.uri}" }) { item ->
-                        MediaRowCard(item, app.api.resolve(item.imageUrl), emptyList(), actions)
-                    }
+                items(results.orEmpty(), key = { it.uri }) { item ->
+                    MediaRowCard(item, app.api.resolve(item.imageUrl), emptyList(), actions)
                 }
             }
         }

@@ -41,15 +41,15 @@ data class MediaItem(
 data class BrowseResult(val uri: String? = null, val title: String = "", val items: List<MediaItem> = emptyList())
 
 @Serializable
-data class ProviderSearch(
-    val provider: String,
-    val providerName: String,
-    val items: List<MediaItem> = emptyList(),
-    val error: String? = null,
-)
+data class ProviderSearchError(val provider: String, val providerName: String, val error: String)
 
+/** [items] holds the results of all sources, best match first. */
 @Serializable
-data class SearchResult(val query: String = "", val providers: List<ProviderSearch> = emptyList())
+data class SearchResult(
+    val query: String = "",
+    val items: List<MediaItem> = emptyList(),
+    val errors: List<ProviderSearchError> = emptyList(),
+)
 
 @Serializable
 data class NowPlaying(

@@ -34,8 +34,10 @@ public sealed record MediaItemDto(
 /// <param name="Uri">The browsed folder; <c>null</c> for the library root (one folder per provider).</param>
 public sealed record BrowseResultDto(string? Uri, string Title, IReadOnlyList<MediaItemDto> Items);
 
-public sealed record SearchResultDto(string Query, IReadOnlyList<ProviderSearchResultDto> Providers);
+/// <param name="Items">The results of all providers, best match first.</param>
+/// <param name="Errors">The providers that could not be searched; their results are missing from <paramref name="Items"/>.</param>
+public sealed record SearchResultDto(string Query, IReadOnlyList<MediaItemDto> Items, IReadOnlyList<ProviderSearchErrorDto> Errors);
 
-public sealed record ProviderSearchResultDto(string Provider, string ProviderName, IReadOnlyList<MediaItemDto> Items, string? Error = null);
+public sealed record ProviderSearchErrorDto(string Provider, string ProviderName, string Error);
 
 public sealed record ProviderDto(string Id, string Name, string Type, bool Available);

@@ -39,28 +39,28 @@ public sealed class LibraryService(IEnumerable<IMusicProvider> providers, ILogge
 
     public async Task<SearchResultDto> SearchAsync(string query, CancellationToken cancellationToken)
     {
-        var tasks = Providers.Select(async provider =>
+        var tasks = Providers.OrderBy(p => p.SearchOrder).Select(async provider =>
         {
             try
             {
-                // Best match first within a provider (stable: equal matches keep the provider's own order).
-                var items = (await provider.SearchAsync(query, cancellationToken))
-                    .Select(i => (Item: i, Score: SearchRanking.Score(query, i)))
-                    .OrderByDescending(i => i.Score)
-                    .ToList();
-                var result = new ProviderSearchResultDto(provider.Id, provider.Name, items.Select(i => i.Item.ToDto()).ToList());
-                return (provider.SearchOrder, Best: items.Count == 0 ? 0 : items[0].Score, Result: result);
+                return (Items: await provider.SearchAsync(query, cancellationToken), Error: (ProviderSearchErrorDto?)null);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogWarning(ex, "Search in provider {Provider} failed", provider.Id);
-                return (provider.SearchOrder, Best: 0, Result: new ProviderSearchResultDto(provider.Id, provider.Name, [], ex.Message));
+                return (Items: [], Error: new ProviderSearchErrorDto(provider.Id, provider.Name, ex.Message));
             }
         });
+        var results = await Task.WhenAll(tasks);
 
-        // The provider with the best match first; with equal matches the provider order decides (streaming before radio).
-        var results = (await Task.WhenAll(tasks)).OrderByDescending(r => r.Best).ThenBy(r => r.SearchOrder).Select(r => r.Result).ToList();
-        return new SearchResultDto(query, results);
+        // One list, best match first. The sort is stable: equal matches keep the order of the provider (streaming before
+        // radio) and, within a provider, its own order.
+        var items = results
+            .SelectMany(r => r.Items)
+            .OrderByDescending(i => SearchRanking.Score(query, i))
+            .Select(i => i.ToDto())
+            .ToList();
+        return new SearchResultDto(query, items, results.Select(r => r.Error).OfType<ProviderSearchErrorDto>().ToList());
     }
 
     public Task<IReadOnlyList<MediaItem>> GetQueueItemsAsync(MediaItem item, CancellationToken cancellationToken) =>

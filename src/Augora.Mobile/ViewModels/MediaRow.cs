@@ -38,9 +38,3 @@ public sealed class MediaRow(MediaItemDto item, string? imageUrl, IRowHost? host
 
     public static string Format(TimeSpan time) => time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"m\:ss");
 }
-
-/// <summary>Search results of one source.</summary>
-public sealed class MediaGroup(string name, IEnumerable<MediaRow> rows) : List<MediaRow>(rows)
-{
-    public string Name { get; } = name;
-}

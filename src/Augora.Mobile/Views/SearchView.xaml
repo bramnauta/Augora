@@ -17,15 +17,10 @@
 
         <ActivityIndicator Grid.Row="2" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource Accent}"
                            VerticalOptions="Start" Margin="0,24" />
-        <CollectionView Grid.Row="2" ItemsSource="{Binding Groups}" IsGrouped="True">
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Rows}">
             <CollectionView.EmptyView>
                 <Label Text="{Binding Message}" Style="{StaticResource Secondary}" HorizontalTextAlignment="Center" Margin="32" />
             </CollectionView.EmptyView>
-            <CollectionView.GroupHeaderTemplate>
-                <DataTemplate x:DataType="vm:MediaGroup">
-                    <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="18" Margin="16,16,16,4" />
-                </DataTemplate>
-            </CollectionView.GroupHeaderTemplate>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:MediaRow">
                     <v:MediaRowView />
